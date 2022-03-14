@@ -1,0 +1,14 @@
+#' foresiteR
+#'
+#' Water Quality Assessment Planning Tool
+#'
+#' Shiny application that uses the most recent IR assessment information and historical site impairments to inform visualization of monitoring locations and sampling data in the Water Quality Portal.
+#' @import shiny
+#' @import plotly
+#' @import leaflet
+#' @import magrittr
+#' @import shinyjs
+#' @import RColorBrewer
+foresiteR = function(){
+  shiny::runApp(system.file('foresiteR', package='dwqInsights'))
+  }
