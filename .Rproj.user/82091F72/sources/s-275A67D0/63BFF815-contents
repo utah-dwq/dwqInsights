@@ -7,7 +7,6 @@
 #' @import shiny
 #' @import plotly
 #' @import leaflet
-#' @import shinyjs
 #' @import RColorBrewer
 
 #' @export

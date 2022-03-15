@@ -31,42 +31,44 @@ server <- function(input, output) {
 
     # Map generation
     output$mappo=leaflet::renderLeaflet({
-        mappo=leaflet()
-        mappo=setView(mappo,lat=39.723030, lng=-111.554213, zoom=6)
-        mappo=addProviderTiles(mappo,"Esri.WorldImagery", group = "Satellite", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE))
-        mappo=addProviderTiles(mappo,"Esri.WorldTopoMap", group = "World topo", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE))
-        mappo=addMapPane(mappo,"underlay_polygons", zIndex = 400)
-        mappo=addMapPane(mappo,"au_poly", zIndex = 410)
-        mappo=addMapPane(mappo,"markers", zIndex = 420)
-        mappo=addMapPane(mappo,"highlight", zIndex = 415)
-        mappo=addPolygons(mappo,data=wqTools::wmu_poly,group="Watershed management units",fillOpacity = 0.1,weight=2,color="#0b86a3", options = pathOptions(pane = "underlay_polygons"),
+        mappo=leaflet::leaflet()%>%
+            leaflet::setView(lat=39.723030, lng=-111.554213, zoom=6)%>%
+            leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
+            leaflet::addProviderTiles("Esri.WorldTopoMap", group = "World topo", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
+            leaflet::addMapPane("underlay_polygons", zIndex = 400) %>%
+            leaflet::addMapPane("au_poly", zIndex = 410)  %>%
+            leaflet::addMapPane("markers", zIndex = 420)  %>%
+            leaflet::addMapPane("highlight", zIndex = 415)%>%
+            leaflet::addPolygons(data=wqTools::wmu_poly,group="Watershed management units",fillOpacity = 0.1,weight=2,color="#0b86a3", options = leaflet::pathOptions(pane = "underlay_polygons"),
                         popup=wqTools::wmu_poly$Mgmt_Unit
-            )
-            addPolygons(data=wqTools::bu_poly,group="Beneficial uses",fillOpacity = 0.1,weight=2,color="purple", options = pathOptions(pane = "underlay_polygons"),
+            )%>%
+            leaflet::addPolygons(data=wqTools::bu_poly,group="Beneficial uses",fillOpacity = 0.1,weight=2,color="purple", options = leaflet::pathOptions(pane = "underlay_polygons"),
                         popup=paste0(
                             "Description: ", wqTools::bu_poly$R317Descrp,
                             "<br> Uses: ", wqTools::bu_poly$bu_class)
             )%>%
-            addCircleMarkers(data=ns_sites_paramwide, lng=~IR_Long, lat=~IR_Lat,group="Impaired sites",color="red", radius=5,options = pathOptions(pane = "markers"),
+            leaflet::addCircleMarkers(data=ns_sites_paramwide, lng=~IR_Long, lat=~IR_Lat,group="Impaired sites",color="red", radius=5,options = leaflet::pathOptions(pane = "markers"),
                              popup=paste0(
                                  "MLID: ",ns_sites_paramwide$IR_MLID,
                                  "<br> Name: ",ns_sites_paramwide$IR_MLNAME,
                                  "<br> Parameter (First Year Listed):",ns_sites_paramwide$`Impaired Parameters`
                              ))%>%
-            addLayersControl(position ="topleft",
+            leaflet::addLayersControl(position ="topleft",
                                       baseGroups = c("World topo", "Satellite"),overlayGroups = c("Beneficial uses", "Watershed management units", "Impaired sites"),
                                       options = leaflet::layersControlOptions(collapsed = TRUE, autoZIndex=FALSE))%>%
-            hideGroup("Beneficial uses")%>%
-            hideGroup("Impaired sites")%>%
-            addControl(dateInput("mindate","Start Date",startview = "month"))%>%
-            addControl(dateInput("maxdate","End Date",startview = "month"))%>%
-            addControl(actionButton("select","Let's go!"))
+            leaflet::hideGroup("Beneficial uses")%>%
+            leaflet::hideGroup("Impaired sites")%>%
+            leaflet::addControl(dateInput("mindate","Start Date",startview = "month"))%>%
+            leaflet::addControl(dateInput("maxdate","End Date",startview = "month"))%>%
+            leaflet::addControl(actionButton("select","Let's go!"))
           })
     mappo=leaflet::leafletProxy('mappo')
 
     # Apply filters to map
     observeEvent(input$apply,{
-        mappo=clearGroup(mappo,"AU Category")
+      factpal = leaflet::colorFactor(c("#118a11","#255d8a","#a6a6a6","#984ea3","#e41a1c"),levels(au_p$EPA_IR_CATEGORY_ID))
+        mappo%>%
+          leaflet::clearGroup("AU Category")
         au_sel = au_p
         if(!input$basin=="All"){
             au_sel = subset(au_sel, au_sel$Mgmt_Unit==input$basin)}
@@ -74,15 +76,15 @@ server <- function(input, output) {
             au_sel = subset(au_sel, au_sel$EPA_IR_CATEGORY_ID==input$cat)}
         view=sf::st_bbox(au_sel)
         mappo%>%
-            addPolygons(data=au_sel,group="AU Category",fillOpacity = 0.3,weight=2,color=~factpal(au_sel$EPA_IR_CATEGORY_ID), layerId=~polyID, options = pathOptions(pane = "au_poly"),
+            leaflet::addPolygons(data=au_sel,group="AU Category",fillOpacity = 0.3,weight=2,color=~factpal(au_sel$EPA_IR_CATEGORY_ID), layerId=~polyID, options = leaflet::pathOptions(pane = "au_poly"),
                         popup=paste0(
                             "AU name: ", au_sel$AU_NAME,
                             "<br> AU ID: ", au_sel$ASSESSMENT_UNIT_ID,
                             "<br> EPA Category: ", au_sel$EPA_IR_CATEGORY_ID,
                             "<br> Parameter (Year Listed): ", au_sel$`Impaired Parameters`,
                             "<br> Delisted Parameters: ", au_sel$`Delisted Parameters`))%>%
-            fitBounds(paste(view[1]),paste(view[2]),paste(view[3]),paste(view[4]))%>%
-            hideGroup("Watershed management units")
+            leaflet::fitBounds(paste(view[1]),paste(view[2]),paste(view[3]),paste(view[4]))%>%
+            leaflet::hideGroup("Watershed management units")
 
     })
 
@@ -90,10 +92,10 @@ server <- function(input, output) {
     observeEvent(input$reset,{
         reactive_objects$focal_au = NULL
         mappo%>%
-            setView(lat=39.723030, lng=-111.554213, zoom=6)%>%
-            clearGroup("AU Category")%>%
-            clearGroup("Selected AU")%>%
-            showGroup("Watershed management units")
+            leaflet::setView(lat=39.723030, lng=-111.554213, zoom=6)%>%
+            leaflet::clearGroup("AU Category")%>%
+            leaflet::clearGroup("Selected AU")%>%
+            leaflet::showGroup("Watershed management units")
     })
 
     # Map polygon click to select AUs
@@ -102,22 +104,26 @@ server <- function(input, output) {
         single_au_poly = subset(wqTools::au_poly, wqTools::au_poly$ASSESS_ID==au_id)
         reactive_objects$focal_au = single_au_poly
         mappo%>%
-            clearGroup("Selected AU")%>%
-            addPolygons(data=single_au_poly, group="Selected AU",fillOpacity = 0.5,weight=2,color="#26F0F1", layerId=~polyID, options = pathOptions(pane = "highlight"))
+            leaflet::clearGroup("Selected AU")%>%
+            leaflet::addPolygons(data=single_au_poly, group="Selected AU",fillOpacity = 0.5,weight=2,color="#26F0F1", layerId=~polyID, options = leaflet::pathOptions(pane = "highlight"))
+    })
+
+    observe({
+      input$mappo_shape_click
     })
 
     # Small map for site review
     output$mappino=leaflet::renderLeaflet({
-        mappino=leaflet()%>%
-            setView(lat=39.723030, lng=-111.554213, zoom=6)%>%
-            addWMSTiles("https://basemap.nationalmap.gov/arcgis/services/USGSTopo/MapServer/WmsServer", group = "USGS topo", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE), layers = "0") %>%
-            addWMSTiles("https://basemap.nationalmap.gov/arcgis/services/USGSHydroCached/MapServer/WmsServer", group = "Hydrography", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE), layers = "0") %>%
-            addProviderTiles("Esri.WorldImagery", group = "Satellite", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
-            addProviderTiles("Esri.WorldTopoMap", group = "World topo", options = providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
-            addMapPane("au_poly", zIndex = 410)  %>%
-            addMapPane("imps", zIndex = 420)  %>%
-            addMapPane("markers", zIndex = 415)%>%
-            addLayersControl(position ="topleft",
+        mappino=leaflet::leaflet()%>%
+            leaflet::setView(lat=39.723030, lng=-111.554213, zoom=6)%>%
+            leaflet::addWMSTiles("https://basemap.nationalmap.gov/arcgis/services/USGSTopo/MapServer/WmsServer", group = "USGS topo", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE), layers = "0") %>%
+            leaflet::addWMSTiles("https://basemap.nationalmap.gov/arcgis/services/USGSHydroCached/MapServer/WmsServer", group = "Hydrography", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE), layers = "0") %>%
+            leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
+            leaflet::addProviderTiles("Esri.WorldTopoMap", group = "World topo", options = leaflet::providerTileOptions(updateWhenZooming = FALSE,updateWhenIdle = TRUE)) %>%
+            leaflet::addMapPane("au_poly", zIndex = 410)  %>%
+            leaflet::addMapPane("imps", zIndex = 420)  %>%
+            leaflet::addMapPane("markers", zIndex = 415)%>%
+            leaflet::addLayersControl(position ="topleft",
                              baseGroups = c("World topo","USGS topo", "Hydrography", "Satellite"),
                              overlayGroups = c("Selected AU", "All sites","Parameter sites","Impaired sites"),
                              options = leaflet::layersControlOptions(collapsed = TRUE, autoZIndex=FALSE))
@@ -142,25 +148,25 @@ server <- function(input, output) {
         ns_sites_au = subset(ns_sites_paramwide, ns_sites_paramwide$ASSESSMENT_UNIT_ID==auid)
         view=sf::st_bbox(focal_au)
         mappino%>%
-            clearGroup("Selected AU")%>%
-            addPolygons(data=focal_au, group="Selected AU",stroke = TRUE, fillOpacity = 0,weight=3,color="#26F0F1", layerId=~polyID, options = pathOptions(pane = "au_poly"),
+            leaflet::clearGroup("Selected AU")%>%
+            leaflet::addPolygons(data=focal_au, group="Selected AU",stroke = TRUE, fillOpacity = 0,weight=3,color="#26F0F1", layerId=~polyID, options = leaflet::pathOptions(pane = "au_poly"),
                         popup=paste0(
                             "AU name: ", focal_au$AU_NAME,
                             "<br> AU ID: ", focal_au$ASSESS_ID))%>%
-            addCircleMarkers(data = sites,lng =~LongitudeMeasure, lat=~LatitudeMeasure,group="All sites",color=~mapcolor, radius=8,options = pathOptions(pane = "markers"),
+            leaflet::addCircleMarkers(data = sites,lng =~LongitudeMeasure, lat=~LatitudeMeasure,group="All sites",color=~mapcolor, radius=8,options = leaflet::pathOptions(pane = "markers"),
                              popup=paste0(
                                  "Organization: ",sites$OrganizationFormalName,
                                  "<br> WQX ID: ",sites$MonitoringLocationIdentifier,
                                  "<br> WQX Name: ",sites$MonitoringLocationName,
                                  "<br> Type: ",sites$MonitoringLocationTypeName
                              ))%>%
-            addCircleMarkers(data=ns_sites_au, lng=~IR_Long, lat=~IR_Lat,group="Impaired sites",color="red", fillOpacity=0, radius=5,options = pathOptions(pane = "imps"),
+            leaflet::addCircleMarkers(data=ns_sites_au, lng=~IR_Long, lat=~IR_Lat,group="Impaired sites",color="red", fillOpacity=0, radius=5,options = leaflet::pathOptions(pane = "imps"),
                              popup=paste0(
                                  "MLID: ",ns_sites_au$IR_MLID,
                                  "<br> Name: ",ns_sites_au$IR_MLNAME,
                                  "<br> Parameter (First Year Listed):",ns_sites_au$`Impaired Parameters`
                              ))%>%
-            fitBounds(paste(view[1]),paste(view[2]),paste(view[3]),paste(view[4]))
+            leaflet::fitBounds(paste(view[1]),paste(view[2]),paste(view[3]),paste(view[4]))
         }})
     output$param <- renderUI({
         req(reactive_objects$data)
@@ -196,9 +202,9 @@ server <- function(input, output) {
         sites$radius[is.na(sites$radius)]=3
         sites$ncount[is.na(sites$ncount)]=0
         mappino%>%
-            clearGroup("Parameter sites")%>%
-            hideGroup("All sites")%>%
-            addCircleMarkers(data = sites,lng =~LongitudeMeasure, lat=~LatitudeMeasure,group="Parameter sites",color=~mapcolor, radius=~radius,options = pathOptions(pane = "markers"),
+            leaflet::clearGroup("Parameter sites")%>%
+            leaflet::hideGroup("All sites")%>%
+            leaflet::addCircleMarkers(data = sites,lng =~LongitudeMeasure, lat=~LatitudeMeasure,group="Parameter sites",color=~mapcolor, radius=~radius,options = leaflet::pathOptions(pane = "markers"),
                              popup=paste0(
                                  "Organization: ",sites$OrganizationFormalName,
                                  "<br> WQX ID: ",sites$MonitoringLocationIdentifier,
@@ -217,14 +223,14 @@ server <- function(input, output) {
         sites = unique(dat$MonitoringLocationIdentifier)
         # fig <- plot_ly(data=dat, x=~ActivityStartDate, y=~ResultMeasureValue, color=~MonitoringLocationIdentifier, line=list(color=dat$mapcolor))%>%
         #     layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode)))
-        fig <- plot_ly(type="scatter")
+        fig <- plotly::plot_ly(type="scatter")
         for(i in 1:length(sites)){
             d = subset(dat, dat$MonitoringLocationIdentifier==sites[i])
             fig <- fig%>%
-                add_trace(data = d, x=~ActivityStartDate, y=~ResultMeasureValue, color=~MonitoringLocationIdentifier,line=list(color=unique(d$mapcolor)), marker=list(color=unique(d$mapcolor)), mode="lines+markers")
+                plotly::add_trace(data = d, x=~ActivityStartDate, y=~ResultMeasureValue, color=~MonitoringLocationIdentifier,line=list(color=unique(d$mapcolor)), marker=list(color=unique(d$mapcolor)), mode="lines+markers")
         }
         fig <- fig%>%
-            layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode)))
+            plotly::layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode)))
 
     })
 
