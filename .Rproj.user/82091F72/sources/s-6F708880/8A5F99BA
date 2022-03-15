@@ -3,7 +3,7 @@
     "path": "~/GitHub/dwqInsights/R/foresiteR.R",
     "project_path": "R/foresiteR.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "1882400817",
     "contents": "",
     "dirty": false,
     "created": 1647292054014.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "9,18",
+        "cursorPosition": "7,12",
         "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1647292122,
+    "lastKnownWriteTime": 1647356382,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1647292122663,
+    "last_content_update": 1647356382146,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -6,9 +6,10 @@
 #' @import shiny
 #' @import plotly
 #' @import leaflet
-#' @import magrittr
 #' @import shinyjs
 #' @import RColorBrewer
+#' @importFrom  magrittr %>%
+
 #' @export
 foresiteR = function(){
   shiny::runApp(system.file('foresiteR', package='dwqInsights'))
