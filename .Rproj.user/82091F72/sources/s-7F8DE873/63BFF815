@@ -1,26 +1,26 @@
 {
-    "id": "A9D879BE",
-    "path": "~/GitHub/dwqInsights/inst/foresiteR/app.R",
-    "project_path": "inst/foresiteR/app.R",
+    "id": "63BFF815",
+    "path": "~/GitHub/dwqInsights/R/foresiteR.R",
+    "project_path": "R/foresiteR.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1647370002669.0,
+    "created": 1647362540678.0,
     "source_on_save": false,
     "relative_order": 3,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "111,29",
-        "scrollLine": "100"
+        "cursorPosition": "10,27",
+        "scrollLine": "2"
     },
     "folds": "",
-    "lastKnownWriteTime": 1647375453,
+    "lastKnownWriteTime": 1647376604,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1647375453536,
+    "last_content_update": 1647376604201,
     "read_only": false,
     "read_only_alternatives": []
 }

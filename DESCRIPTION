@@ -23,6 +23,5 @@ Imports:
     shiny,
     shinyjs,
     tidyr
-
 Remotes:
     wqTools
