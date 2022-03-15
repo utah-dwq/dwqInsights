@@ -1,4 +1,0 @@
-library(testthat)
-library(dwqInsights)
-
-test_check("dwqInsights")

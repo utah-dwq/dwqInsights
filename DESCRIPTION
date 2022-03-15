@@ -16,12 +16,13 @@ Suggests:
 Config/testthat/edition: 3
 RoxygenNote: 7.1.2
 Imports:
-    dplyr,
     leaflet,
     plotly,
     RColorBrewer,
     shiny,
     shinyjs,
     tidyr
+Depends: 
+    magrittr
 Remotes:
     wqTools

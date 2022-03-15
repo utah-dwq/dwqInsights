@@ -2,7 +2,6 @@
 
 export(foresiteR)
 import(RColorBrewer)
-import(dplyr)
 import(leaflet)
 import(plotly)
 import(shiny)
