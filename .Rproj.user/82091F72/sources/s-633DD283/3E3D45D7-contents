@@ -1,0 +1,29 @@
+Package: dwqInsights
+Type: Package
+Title: Tools for water quality sample planning and analysis
+Version: 0.1.0
+Authors@R: person("Elise","Hinman",email="ehinman@utah.gov", role=c("aut","cre"))
+Description: This package allows DWQ staff to explore water quality data
+    used in IR assessments, delisting analyses, and TMDL development. It
+    is designed to work with EPA's Water Quality Portal and DWQ's wqTools
+    and irTools outputs to improve user knowledge of the state and data
+    collected therein.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.1.2
+Imports:
+    magrittr,
+    leaflet,
+    plotly,
+    RColorBrewer,
+    shiny,
+    shinyjs,
+    shinycssloaders,
+    sf,
+    scales
+Remotes:
+    wqTools

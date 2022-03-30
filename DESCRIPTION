@@ -22,6 +22,8 @@ Imports:
     RColorBrewer,
     shiny,
     shinyjs,
-    tidyr
+    shinycssloaders,
+    sf,
+    scales
 Remotes:
     wqTools
