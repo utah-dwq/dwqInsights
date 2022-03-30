@@ -27,12 +27,14 @@ ui <- fluidPage(
     br(),
     fluidRow(shinycssloaders::withSpinner(leaflet::leafletOutput("mappo", height="400px", width="100%"),size=2, color="#0080b7")),
     br(),
-    fluidRow(column(6, shinycssloaders::withSpinner(leaflet::leafletOutput("mappino", height="400px", width="100%"),size=2, color="#0080b7")),
+    fluidRow(column(6, shinycssloaders::withSpinner(leaflet::leafletOutput("mappino", height="600px", width="100%"),size=2, color="#0080b7")),
              column(6,fluidRow(column(4,uiOutput("param")),
                                column(4,uiOutput("fraction")),
                                column(4, uiOutput("unit"))),
                     fluidRow(column(2, uiOutput("submit"))),
-                    fluidRow(plotlyOutput("timeseries"))))
+                    fluidRow(plotlyOutput("timeseries")),
+                    fluidRow(column(2,uiOutput("getData"))),
+                    br()))
 )
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -155,6 +157,7 @@ server <- function(input, output) {
     observeEvent(input$select,{
         mindate = as.character(format(input$mindate,"%m/%d/%Y"))
         maxdate = as.character(format(input$maxdate,"%m/%d/%Y"))
+        reactive_objects$daterange = paste0(mindate,"to",maxdate)
         focal_au = reactive_objects$focal_au
         auid = focal_au$ASSESS_ID
         sites = wqTools::readWQP(type="sites",siteType=c("Lake, Reservoir, Impoundment","Spring","Stream"),auid=auid, start_date = mindate, end_date = maxdate)
@@ -260,6 +263,20 @@ server <- function(input, output) {
             layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode)))
 
     })
+
+    output$getData <- renderUI({
+      req(reactive_objects$p_data)
+      downloadButton("dwn","Download Plot Data")
+    })
+
+    output$dwn <- downloadHandler(
+      filename = function(){
+        paste0(unique(reactive_objects$p_data$CharacteristicName),"_",reactive_objects$focal_au$ASSESS_ID,".csv")
+      },
+      content = function(file){
+        write.csv(reactive_objects$p_data,file,row.names = FALSE)
+      }
+    )
 
 }
 
