@@ -155,6 +155,7 @@ server <- function(input, output) {
     mappino=leafletProxy('mappino')
 
     observeEvent(input$select,{
+      if(is.null(reactive_objects$focal_au)){showModal(modalDialog(title="No AU selected","Please select an assessment unit and date range before clicking 'Let's go!'"))}else{
         mindate = as.character(format(input$mindate,"%m/%d/%Y"))
         maxdate = as.character(format(input$maxdate,"%m/%d/%Y"))
         reactive_objects$daterange = paste0(mindate,"to",maxdate)
@@ -197,7 +198,7 @@ server <- function(input, output) {
                                  "<br> Parameter (First Year Listed):",ns_sites_au$`Impaired Parameters`
                              ))%>%
             fitBounds(paste(view[1]),paste(view[2]),paste(view[3]),paste(view[4]))
-        }})
+        }}})
     output$param <- renderUI({
         req(reactive_objects$data)
         params = sort(unique(reactive_objects$data$CharacteristicName))

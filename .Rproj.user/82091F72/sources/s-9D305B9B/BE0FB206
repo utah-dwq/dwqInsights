@@ -1,0 +1,24 @@
+{
+    "id": "BE0FB206",
+    "path": "~/GitHub/dwqInsights/R/tmdlCalcs.R",
+    "project_path": "R/tmdlCalcs.R",
+    "type": "r_source",
+    "hash": "2115386740",
+    "contents": "",
+    "dirty": false,
+    "created": 1648671617278.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1632951874,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1632951874,
+    "read_only": false,
+    "read_only_alternatives": []
+}

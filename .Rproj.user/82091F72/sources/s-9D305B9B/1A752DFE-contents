@@ -1,0 +1,50 @@
+---
+title: "dwqInsights Guide"
+author: "Elise Hinman"
+date: '2022-06-23'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is a user guide for the dwqInsights package, developed for the [Utah Division of Water Quality](https://deq.utah.gov/division-water-quality). It was developed by [Elise Hinman](ehinman@utah.gov), Environmental Scientist at DWQ, in tandem with subject matter experts from the Watershed Protection Section and Standards Section of the Utah Division of Water Quality. Code blocks in this markdown document can be copied and pasted into an R console and run by hitting enter.
+
+## Downloading dwqInsights
+
+dwqInsights is stored and updated on [Github](https://github.com/edhinman/dwqInsights). It is recommended that you have the latest version of [R](https://cloud.r-project.org/) and [RStudio](https://www.rstudio.com/products/rstudio/download/) before downloading the dwqInsights package. To download packages from GitHub, you need the **devtools** package. If the following command leads to an error...
+```{r, eval=F}
+library(devtools)
+```
+...download the package using this command.
+```{r, eval=F}
+install.packages("devtools")
+```
+
+Once devtools is downloaded, dwqInsights requires the wqTools package, which also lives on [GitHub](https://github.com/utah-dwq/wqTools). Use the following commands to download wqTools and dwqInsights. 
+
+```{r, eval=F}
+devtools::install_github("utah-dwq/wqTools")
+devtools::install_github("edhinman/dwqInsights")
+```
+
+## dwqInsights apps and functions
+
+The package has a variety of exploratory tools designed to assist division staff with monitoring, assessment, and prioritization. Descriptions below.
+
+### foresiteR
+
+The foresiteR app queries water quality data from [EPA's Water Quality Portal](https://www.waterqualitydata.us/) over a specified date range at the assessment unit level. It contains the latest Integrated Report assessment categories and impaired sites, as well as other water quality-related spatial layers to assist users in their database queries. The app displays timeseries data for all parameters and sites within the assessment unit. Data are also downloadable for further analyses.
+
+![dwqInsights screenshot](imgs/dwqInsightsgrab.png "dwqInsights screenshot")
+To launch the app, use the code below:
+```{r, eval=F}
+dwqInsights::foresiteR()
+```
+
+A new window opens and displays a map of Utah with the Watershed Management Units highlighted. In the upper right-hand corner of the map, there is a layers icon. Hover over this icon to open a menu containing the available spatial layers for the map. These include impaired sites and beneficial uses. However, you must first filter to the assessment units of interest using the two menus above the map before viewing any water quality data. Set the drop-down menus to your specifications and click "Apply filters". This will cause the associated assessment units to appear on the map. Click on an assessment unit of interest, enter in a date range on the left hand side of the map, and click "Let's Go!" 
+
+The app queries the latest data from EPA's Water Quality Portal for all sites in the assessment unit, and a new map appears in the lower part of the window showing the sites and their relative data richness (larger circles means more data). Impaired sites are also shown in red. On the right side of the screen, the drop down menus allow the user to pick parameters of interest to plot. Note that different organizations or even visits may be recorded with different units or fractions. Once the data appear on the plot, the user may choose to download the data for other uses by clicking the button "Download data" below the plot.
+
+### tmdlTools
