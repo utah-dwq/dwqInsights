@@ -17,7 +17,7 @@
 #' @import openxlsx
 #' @import data.table
 
-# test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
+test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
 
 tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
   warning("This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs.")
@@ -58,7 +58,6 @@ tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), ir
   tbl = unique(param.dat[,c("CharacteristicName","ResultMeasure.MeasureUnitCode")])
   tbl$concat = apply(tbl, 1 , paste, collapse = "-" )
   readline(paste0("The following parameters are in the dataset: ",paste(tbl$concat, collapse=", "),". Press [enter] to continue or [esc] to exit."))
-  rm(tbl)
 
   # Aggregate to daily values
   param.agg = subset(param.dat, !param.dat$CharacteristicName%in%c("Flow"))
@@ -85,12 +84,10 @@ tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), ir
     names(flow.agg)[names(flow.agg)=="ResultMeasureValue"] = "DailyFlowValue"
     names(flow.agg)[names(flow.agg)=="ResultMeasure.MeasureUnitCode"] = "FlowUnit"
     flow.agg$Flow_Percentile = flow_perc(flow.agg$DailyFlowValue)
-
     param.agg.dv = merge(param.agg.dv, flow.agg, all.x = TRUE)
     param.agg.dv$Observed_Loading = param.agg.dv$DailyResultMeasureValue*cf*param.agg.dv$DailyFlowValue
     param.agg.dv$TMDL = param.agg.dv$NumericCriterion*cf*param.agg.dv$DailyFlowValue*(1-mos)
   }
-
   ############################ SAVE WORKBOOK FILE WITH NEW SHEETS #########################
   if(exportfromfunc){
     write.csv(param.agg.dv,paste0("tmdlCalc_output_",Sys.Date(),".csv"), row.names = FALSE)
