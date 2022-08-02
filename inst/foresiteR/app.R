@@ -8,7 +8,7 @@ library(plotly)
 library(RColorBrewer)
 
 load(system.file("extdata", "latest_asmnts_hist_impairments_app.Rdata", package = "dwqInsights"))
-
+load(system.file("extdata", "tribal_poly.Rdata", package = "dwqInsights"))
 #####
 ui <- fluidPage(
     headerPanel(
@@ -64,6 +64,10 @@ server <- function(input, output) {
                           "Assessment unit ID: ",wqTools::au_poly$ASSESS_ID,
                           "<br> Assessment unit Name: ",wqTools::au_poly$AU_NAME
                         ))%>%
+            addPolygons(data=tribal_poly, group="Tribal lands", fillOpacity = 0.1,weight=2,color="orange", options = pathOptions(pane = "underlay_polygons"),
+                        popup=paste0(
+                          "Tribe: ",tribal_poly$Tribe,
+                          "<br> Name: ",tribal_poly$Label_Fede))%>%
             addCircleMarkers(data=ns_sites_paramwide, lng=~IR_Long, lat=~IR_Lat,group="Impaired sites",color="red", radius=5,options = pathOptions(pane = "markers"),
                              popup=paste0(
                                  "MLID: ",ns_sites_paramwide$IR_MLID,
@@ -80,10 +84,11 @@ server <- function(input, output) {
               zoom=12, openPopup = FALSE, firstTipSubmit = TRUE,
               autoCollapse = TRUE, hideMarkerOnCollapse = TRUE ))%>%
             addLayersControl(position ="topright",
-                                      baseGroups = c("World topo", "Satellite"),overlayGroups = c("All AUs", "Beneficial uses", "Watershed management units", "Impaired sites"),
+                                      baseGroups = c("World topo", "Satellite"),overlayGroups = c("All AUs", "Tribal lands","Beneficial uses", "Watershed management units", "Impaired sites"),
                                       options = leaflet::layersControlOptions(collapsed = TRUE, autoZIndex=FALSE))%>%
             hideGroup("Beneficial uses")%>%
             hideGroup("All AUs")%>%
+            hideGroup("Tribal lands")%>%
             hideGroup("Impaired sites")%>%
             addControl(dateInput("mindate","Start Date",startview = "month"))%>%
             addControl(dateInput("maxdate","End Date",startview = "month"))%>%
