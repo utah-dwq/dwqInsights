@@ -1,0 +1,4 @@
+"0","output = tmdlCalcs(wb_path = file_path, aggFun = aggFun, cf = correction_factor, mos = margin_of_safety, rec_ssn = rec_season, irg_ssn = irrigation_season, exportfromfunc = TRUE)
+"
+"2","Warning: This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs."
+"0",""

@@ -9,7 +9,7 @@
 #' @param aggFun String. A character object describing the function used to aggregate to daily/monthly/rec season/irrigation season values. Most typically will be one of the following: gmean, mean, max, min.
 #' @param exportfromfunc Logical. Indicates whether workbook should be exported from tmdlCalcs function, or skipped if using Shiny interface. Default is FALSE to accommodate Shiny use.
 #' @return The output includes a new Excel workbook with the name of the original file plus today's date.xlsx, as well as the following dataframes, composed within a list: ecoli concentrations, flow data, ldc data, monthly means, rec/non rec means, and irg/non irg means.
-#' @export tmdlCalcs
+#' @export
 #' @import lubridate
 #' @import plyr
 #' @import dplyr
@@ -17,7 +17,7 @@
 #' @import openxlsx
 #' @import data.table
 
-test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
+# test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
 
 tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
   warning("This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs.")
@@ -57,7 +57,7 @@ tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), ir
   # Show parameters and units to inform user composition of dataset
   tbl = unique(param.dat[,c("CharacteristicName","ResultMeasure.MeasureUnitCode")])
   tbl$concat = apply(tbl, 1 , paste, collapse = "-" )
-  readline(paste0("The following parameters are in the dataset: ",paste(tbl$concat, collapse=", "),". Press [enter] to continue or [esc] to exit."))
+  paste0("The following parameters are in the dataset: ",paste(tbl$concat, collapse=", "),". Press [enter] to continue or [esc] to exit.")
 
   # Aggregate to daily values
   param.agg = subset(param.dat, !param.dat$CharacteristicName%in%c("Flow"))
