@@ -44,6 +44,13 @@ tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), ir
 
   # Load csv
   param.dat <- read.csv(wb_path)
+  ds_names = names(param.dat)
+  req_names = c("MonitoringLocationIdentifier","ActivityStartDate","CharacteristicName","ResultMeasureValue","ResultMeasure.MeasureUnitCode","BeneficialUse","NumericCriterion")
+  missing = req_names[!req_names%in%ds_names]
+  if(length(missing)>0){
+    text = paste(missing,collapse=", ")
+    stop(paste0(text," column(s) missing from input dataset. Add required column(s) before running."))
+    }
   start = dim(param.dat)[1]
   param.dat$Date <- as.Date(param.dat$ActivityStartDate, format="%m/%d/%Y")
   param.dat = subset(param.dat, !is.na(as.numeric(param.dat$ResultMeasureValue)))

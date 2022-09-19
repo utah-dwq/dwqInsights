@@ -1,0 +1,1 @@
+"0","ggsave(paste0(au_name,""_monthly.jpg""),width=8,height=5, units=""in"", dpi=500)"

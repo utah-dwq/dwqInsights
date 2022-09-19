@@ -15,20 +15,54 @@ The purpose of this RMarkdown document is to provide a streamlined, reproducible
 ## Input information
 The user will need to fill in the information below to run the rest of the script and generate the figures. 
 ```{r, data_info}
-file_path = "template_csv.csv"
-au_name = "Little Cottonwood Creek-1"
+file_path = "em_creek.csv"
+au_name = "Emigration"
 aggFun ="gmean" # geometric mean
 correction_factor = 24465715 # correction factor for E. coli
 margin_of_safety = 0.1 # percentage
 rec_season=c(121,304) # days of the year
 irrigation_season=c(135,288) # days of the year
 site_order = data.frame(MonitoringLocationIdentifier = c(
-  "4993580",
-  "4993590",
-  "4993592",
-  "4993635"
-),Order = c(1,2,3,4))
-colorz = c("#034963","#0b86a3","#00a1c6","#cde3e2", "#BFD7B5","#D1CAA1","#D1D2F9","#77625C","#EFA9AE") # these are HEX color codes. Feel free to lengthen, shorten, or change the colors based on your dataset
+  "BR_12.29",
+  "BR_14.15",
+  "BR_14.44",
+  "EM_01.62",
+  "EM_02.54",
+  "EM_03.67",
+  "EM_04.17",
+  "EM_05.17",
+  "EM_07.30",
+  "EM_07.79",
+  "EM_08.50",
+  "EM_08.83",
+  "EM_08.93",
+  "EM_09.48",
+  "EM_10.43",
+  "EM_11.87",
+  "KL_00.21",
+  "KL_01.50"
+),Order = c(1:18))
+colorz = c("#f44336",
+"#e81e63",
+"#9c27b0",
+"#673ab7",
+"#3f51b5",
+"#2196f3",
+"#03a9f4",
+"#00bcd4",
+"#009688",
+"#4caf50",
+"#8bc34a",
+"#cddc39",
+"#ffeb3b",
+"#ffc107",
+"#ff9800",
+"#ff5722",
+"#795548",
+"#9e9e9e",
+"#607d8b",
+"#000000")
+# colorz = c("#034963","#0b86a3","#00a1c6","#cde3e2", "#BFD7B5","#D1CAA1","#D1D2F9","#77625C","#EFA9AE") # these are HEX color codes. Feel free to lengthen, shorten, or change the colors based on your dataset
 ```
 
 
@@ -52,7 +86,7 @@ colorsy=colorz[1:nrow(site_order)]
 ## Run tmdlCalc function
 The function below aggregates data to a daily mean, determines which datapoints exceed the numeric criterion, groups data by recreation and irrigation seasons, and calculates observed and TMDL loading if flow is provided in the data. It produces an R data output that is ideal for plotting and figure production, as well as an output .csv for documentation and tracking purposes.
 ```{r, tmdlcalcs}
-source("tmdlCalcs.R")
+source("R/tmdlCalcs.R")
 output = tmdlCalcs(wb_path = file_path, aggFun = aggFun, cf = correction_factor, mos = margin_of_safety, rec_ssn = rec_season, irg_ssn = irrigation_season, exportfromfunc = TRUE)
 head(output)
 ```
@@ -89,7 +123,7 @@ sites = as.character(sites$MonitoringLocationIdentifier)
 dat = output
 dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)
 
-f = ggplot(dat, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values= colorsy)+theme_classic()+labs(x="Monitoring Location ID", y=unique(dat$ResultMeasure.MeasureUnitCode))+stat_summary(fun=gmean, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none") # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
+f = ggplot(dat, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values= colorsy)+theme_classic()+labs(x="Monitoring Location ID", y=unique(dat$ResultMeasure.MeasureUnitCode))+stat_summary(fun=gmean, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
 f
 ggsave(paste0(au_name,"_downstream_upstream.jpg"),width=6,height=4, units="in", dpi=500)
 ```
@@ -97,12 +131,12 @@ ggsave(paste0(au_name,"_downstream_upstream.jpg"),width=6,height=4, units="in", 
 
 ## Timeseries
 This code block displays sample concentration timeseries by site, ordered downstream to upstream. It includes a horizontal line for the numeric criterion, as well as a grayed out background denoting the typical recreational season bounds. 
-```{r, timeseries_conc, warning=FALSE, message=FALSE}
+```{r, timeseries_conc, warning=FALSE, message=FALSE, fig.width = 6, fig.height=16}
 dat = output
 dat = dat[order(dat$Date),]
 dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)
 
-t = ggplot(dat, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(dat$Date), max(dat$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=2)+theme_classic()+labs(x="Date", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)
+t = ggplot(dat, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(dat$Date), max(dat$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)
 t
 ggsave(paste0(au_name,"_timeseries.jpg"),width=6,height=5, units="in", dpi=500)
 ```
@@ -110,13 +144,13 @@ ggsave(paste0(au_name,"_timeseries.jpg"),width=6,height=5, units="in", dpi=500)
 
 ## Monthly concentration plots
 This code block displays all samples at each site, grouped monthly with an overall monthly mean (geometric mean). The numeric criterion is also plotted on each panel. 
-```{r, month_conc, warning=FALSE, message=FALSE}
+```{r, month_conc, warning=FALSE, message=FALSE,fig.width = 6, fig.height=16}
 dat = output
 dat$month = lubridate::month(dat$Date, label=TRUE)
 dat = dat[order(dat$month),]
 dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)
 
-g = ggplot(dat, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=2)+theme_classic()+labs(x="Month", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)+stat_summary(fun=gmean, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+g = ggplot(dat, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)+stat_summary(fun=gmean, geom="point", fill="#FFB800",color="black", size=3, shape=23)
 g
 ggsave(paste0(au_name,"_monthly.jpg"),width=8,height=5, units="in", dpi=500)
 ```
