@@ -131,20 +131,20 @@ ggsave(paste0(au_name,"_downstream_upstream.jpg"),width=6,height=4, units="in", 
 
 ## Timeseries
 This code block displays sample concentration timeseries by site, ordered downstream to upstream. It includes a horizontal line for the numeric criterion, as well as a grayed out background denoting the typical recreational season bounds. 
-```{r, timeseries_conc, warning=FALSE, message=FALSE, fig.width = 6, fig.height=16}
+```{r, timeseries_conc, warning=FALSE, message=FALSE, fig.width = 6, fig.height=18}
 dat = output
 dat = dat[order(dat$Date),]
 dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)
 
 t = ggplot(dat, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(dat$Date), max(dat$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)
 t
-ggsave(paste0(au_name,"_timeseries.jpg"),width=6,height=5, units="in", dpi=500)
+ggsave(paste0(au_name,"_timeseries.jpg"),width=6,height=18, units="in", dpi=500)
 ```
 
 
 ## Monthly concentration plots
 This code block displays all samples at each site, grouped monthly with an overall monthly mean (geometric mean). The numeric criterion is also plotted on each panel. 
-```{r, month_conc, warning=FALSE, message=FALSE,fig.width = 6, fig.height=16}
+```{r, month_conc, warning=FALSE, message=FALSE,fig.width = 6, fig.height=18}
 dat = output
 dat$month = lubridate::month(dat$Date, label=TRUE)
 dat = dat[order(dat$month),]
@@ -152,7 +152,7 @@ dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIde
 
 g = ggplot(dat, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorsy)+stat_summary(fun=gmean, geom="point", fill="#FFB800",color="black", size=3, shape=23)
 g
-ggsave(paste0(au_name,"_monthly.jpg"),width=8,height=5, units="in", dpi=500)
+ggsave(paste0(au_name,"_monthly.jpg"),width=6,height=18, units="in", dpi=500)
 ```
 
 ## Monthly Observed vs TMDL Loading

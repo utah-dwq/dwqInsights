@@ -1,0 +1,141 @@
+library(shiny)
+library(shinyjs)
+library(DT)
+library(wqTools)
+library(leaflet)
+library(leaflet.extras)
+library(magrittr)
+library(plotly)
+library(ggplot2)
+library(RColorBrewer)
+
+template = data.frame("MonitoringLocationIdentifier"=c("MLID_1234"),
+                      "ActivityStartDate"=c("01/01/2022"),"CharacteristicName"=c("Pollutant_A"),"ResultMeasureValue"=c(50),"ResultMeasure.MeasureUnitCode"=c("mg/L"),"BeneficialUse"=c("2A"),"NumericCriterion"=c(25),"OtherColumnsOK"=c("blank"))
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  headerPanel(
+    title=tags$a(href='https://deq.utah.gov/division-water-quality/',tags$img(src='deq_dwq_logo.png', height = 50, width = 143), target="_blank"),
+    tags$head(tags$link(rel = "icon", type = "image/png", href = "dwq_logo_small.png"), windowTitle="4siteR:Assessment Planning Tool")
+  ),
+  titlePanel("loadFigs: Build Pretty Pollutant Loading Figures"),
+  fluidRow(column(4, downloadButton("template","Download data template"))),
+  br(),
+  fluidRow(column(4, fileInput("uplode","Upload data",accept=".csv"))),
+  fluidRow(column(3,radioButtons("aggfun", "Aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="Arithmetic mean")),
+           column(3, numericInput("mos","Margin of safety", value=0, min=0, max=1)),
+           column(3, numericInput("cf","Loading correction factor", value=0)),
+           column(3, textInput("loadunit","Loading units", value=""))),
+  fluidRow(column(2, uiOutput("calcs"))),
+  br(),
+  navlistPanel(tabPanel("Summary Table",
+                        fluidRow(column(12, uiOutput("summ_sites"))),
+                        fluidRow(column(4, uiOutput("summ_go"))),
+                        br(),
+                        fluidRow(column(12, dataTableOutput("summ")))),
+               tabPanel("Upstream-Downstream"),
+               tabPanel("Timeseries"),
+               tabPanel("Monthly Concentration"),
+               tabPanel("Monthly Loading"),
+               tabPanel("Load Duration Curve")
+               )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+  # create object to hold reactive values
+  reactives = reactiveValues()
+  # allows user to download the data template
+  output$template <- downloadHandler(
+    filename = function() {
+      "data_template.csv"
+    },
+    content = function(file) {
+      write.csv(template, file, row.names = FALSE)
+    }
+  )
+  # Upload dataset
+  observeEvent(input$uplode,{
+    file=input$uplode$datapath
+    dat=read.csv(file)
+    # check to ensure all required column names present
+    ds_names = names(dat)
+    req_names = c("MonitoringLocationIdentifier","ActivityStartDate","CharacteristicName","ResultMeasureValue","ResultMeasure.MeasureUnitCode","BeneficialUse","NumericCriterion")
+    missing = req_names[!req_names%in%ds_names]
+    if(length(missing)>0){
+      text = paste(missing,collapse=", ")
+      showModal(modalDialog(title="Whoops!",paste0(text," column(s) missing from input dataset. Refresh this app and add required column(s) before running.")))
+    }else{
+      # check to ensure date is in the right format
+      date_test = as.Date(dat$ActivityStartDate[1],format="%m/%d/%Y")
+      if(is.na(date_test)){
+        showModal(modalDialog(title="Whoops!","The ActivityStartDate column needs to be in the format mm/dd/YYYY. Please convert dates and try again."))
+      }else{
+        # data is now reactive
+        reactives$dat = dat
+        params = paste(unique(dat$CharacteristicName), collapse = "and ")
+        showModal(modalDialog(title="Check",paste0("This dataset contains ",params," data. If Flow is missing, you may still create summary tables and concentration-based plots by populating the margin of safety and correction factor values as zero before clicking run. Otherwise, populate the margin of safety and correction factor values needed to calculate loading in amount/day." )))
+        }
+      }
+  })
+  # Once data loaded, allow user to populate fields and then calculate summaries/aggregations.
+  output$calcs <- renderUI({
+    req(reactives$dat)
+    actionButton("calcs",label="Run summary and loading calculations")
+  })
+  # Runs TMDL calc function when button is pressed
+  observeEvent(input$calcs,{
+    calcdat = tmdlCalcs(obj=reactives$dat, aggFun=input$aggfun, input$cf, input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
+    reactives$calcdat = calcdat
+    # summary values for all data
+    gmean = function(x){exp(mean(log(x)))}
+    dat_agg = calcdat%>%group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%summarise(daterange = paste0(min(Date)," to ",max(Date)),samplesize=length(DailyResultMeasureValue),minconc = min(DailyResultMeasureValue),arithmean=mean(DailyResultMeasureValue),maxconc = max(DailyResultMeasureValue), perc_exc = sum(Exceeds)/length(Exceeds)*100)
+    rec_mean = calcdat%>%filter(Rec_Season=="rec")%>%group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%summarise(rec_ssn_arithmean=mean(DailyResultMeasureValue),rec_ssn_perc_exc = sum(Exceeds)/length(Exceeds)*100)
+    dat_agg = merge(dat_agg, rec_mean, all = TRUE)
+    if(input$aggfun=="gmean"){
+      dat_agg_geo = calcdat%>%group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%summarise(geomean = gmean(DailyResultMeasureValue))
+      rec_geo = calcdat%>%filter(Rec_Season=="rec")%>%group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%summarise(rec_ssn_geomean=gmean(DailyResultMeasureValue))
+      dat_agg_geo = merge(dat_agg_geo, rec_geo, all = TRUE)
+      dat_agg = merge(dat_agg, dat_agg_geo, all = TRUE)
+    }
+    if("DailyFlowValue"%in%colnames(calcdat)){
+      flo_agg = caldat%>%filter(!is.na(DailyFlowValue))%>%group_by(MonitoringLocationIdentifier, ResultMeasure.MeasureUnitCode)%>%summarise(daterange = paste0(min(Date)," to ",max(Date)),samplesize=length(DailyFlowValue),minconc = min(DailyFlowValue),arithmean=mean(DailyFlowValue),maxconc = max(DailyFlowValue))
+      dat_agg = plyr::rbind.fill(dat_agg, flo_agg)
+      dat_agg$CharacteristicName[is.na(dat_agg$CharacteristicName)] = "Flow"
+    }
+    dat_agg = dat_agg[order(dat_agg$MonitoringLocationIdentifier),]
+    reactives$summ <- dat_agg
+    })
+
+  output$summ_sites <- renderUI({
+    req(reactives$summ)
+    sites = unique(reactives$calcdat$MonitoringLocationIdentifier)
+    sites = sites[order(sites)]
+    checkboxGroupInput("summ_sites","Select sites of interest", choices=c(sites), selected=c(sites),inline=TRUE)
+  })
+  output$summ_go <- renderUI({
+    req(reactives$summ)
+    actionButton("summ_go","Create Table")
+  })
+
+  observeEvent(input$summ_go,{
+    reactives$summ_filter = subset(reactives$summ, reactives$summ$MonitoringLocationIdentifier%in%input$summ_sites)
+  })
+
+  output$summ <- DT::renderDataTable({
+    req(reactives$summ_filter)
+    DT::datatable(reactives$summ_filter,
+                  extensions = 'Buttons',
+                  options = list(
+                    dom='tB',
+                    pageLength=10,
+                    scrollX=TRUE,
+                    scrollY=TRUE,
+                    autoWidth=TRUE,
+                    buttons = c('csv', 'excel')))
+  })
+
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
