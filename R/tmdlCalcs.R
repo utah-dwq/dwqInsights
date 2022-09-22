@@ -1,7 +1,8 @@
 #' Prep data for TMDL analysis and plotting
 #'
 #' This function takes parameter concentration and flow data (if applicable) to calculate mean concentrations and loadings on a daily basis, with additional information provided for other aggregation exercises. Produces outputs that may be fed into plotting functions within the dwqInsights package.
-#' @param dat_path A file path to the .csv file containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
+#' @param wb_path A file path to the .csv file containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
+#' @param obj Alternative to wb_path input. A dataframe object containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
 #' @param cf Numeric. The correction factor to be applied to the loading calculation. Ensure this correction factor is in the correct units to accommodate flow and parameter units.
 #' @param mos Numeric. A proportion between 0 and 1 to be used as the margin of safety applied to the TMDL calculations. In other words, this proportion describes the % reduction applied to the straight TMDL loading value based on the standard.
 #' @param rec_ssn Numeric. A two-object vector of year days signifying the start and end to the rec season.
@@ -19,7 +20,7 @@
 
 # test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
 
-tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
+tmdlCalcs <- function(wb_path, obj, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
   warning("This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs.")
 
   ## Calculation functions needed for plotting and assessment ##
@@ -41,9 +42,12 @@ tmdlCalcs <- function(wb_path, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), ir
     ifelse (d >= WS | d < SE, "Winter",
             ifelse (d >= SE & d < SS, "Spring",
                     ifelse (d >= SS & d < FE, "Summer", "Fall")))}
+  if(!is.null(obj)){
+    param.dat = obj}else{
+      param.dat <- read.csv(wb_path)
+    }
 
   # Load csv
-  param.dat <- read.csv(wb_path)
   ds_names = names(param.dat)
   req_names = c("MonitoringLocationIdentifier","ActivityStartDate","CharacteristicName","ResultMeasureValue","ResultMeasure.MeasureUnitCode","BeneficialUse","NumericCriterion")
   missing = req_names[!req_names%in%ds_names]
