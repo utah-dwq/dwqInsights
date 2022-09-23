@@ -1,8 +1,7 @@
 #' Prep data for TMDL analysis and plotting
 #'
 #' This function takes parameter concentration and flow data (if applicable) to calculate mean concentrations and loadings on a daily basis, with additional information provided for other aggregation exercises. Produces outputs that may be fed into plotting functions within the dwqInsights package.
-#' @param wb_path A file path to the .csv file containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
-#' @param obj Alternative to wb_path input. A dataframe object containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
+#' @param idata A dataframe object containing parameter and flow data for sites of interest. Object has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.
 #' @param cf Numeric. The correction factor to be applied to the loading calculation. Ensure this correction factor is in the correct units to accommodate flow and parameter units.
 #' @param mos Numeric. A proportion between 0 and 1 to be used as the margin of safety applied to the TMDL calculations. In other words, this proportion describes the % reduction applied to the straight TMDL loading value based on the standard.
 #' @param rec_ssn Numeric. A two-object vector of year days signifying the start and end to the rec season.
@@ -14,13 +13,10 @@
 #' @import lubridate
 #' @import plyr
 #' @import dplyr
-#' @import shiny
-#' @import openxlsx
-#' @import data.table
 
 # test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
 
-tmdlCalcs <- function(wb_path, obj, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
+tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
   warning("This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs.")
 
   ## Calculation functions needed for plotting and assessment ##
@@ -42,10 +38,7 @@ tmdlCalcs <- function(wb_path, obj, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304
     ifelse (d >= WS | d < SE, "Winter",
             ifelse (d >= SE & d < SS, "Spring",
                     ifelse (d >= SS & d < FE, "Summer", "Fall")))}
-  if(!is.null(obj)){
-    param.dat = obj}else{
-      param.dat <- read.csv(wb_path)
-    }
+  param.dat = idata
 
   # Load csv
   ds_names = names(param.dat)
@@ -68,7 +61,7 @@ tmdlCalcs <- function(wb_path, obj, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304
   # Show parameters and units to inform user composition of dataset
   tbl = unique(param.dat[,c("CharacteristicName","ResultMeasure.MeasureUnitCode")])
   tbl$concat = apply(tbl, 1 , paste, collapse = "-" )
-  paste0("The following parameters are in the dataset: ",paste(tbl$concat, collapse=", "),". Press [enter] to continue or [esc] to exit.")
+  # paste0("The following parameters are in the dataset: ",paste(tbl$concat, collapse=", "),". Press [enter] to continue or [esc] to exit.")
 
   # Aggregate to daily values
   param.agg = subset(param.dat, !param.dat$CharacteristicName%in%c("Flow"))

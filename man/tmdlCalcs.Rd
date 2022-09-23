@@ -5,8 +5,7 @@
 \title{Prep data for TMDL analysis and plotting}
 \usage{
 tmdlCalcs(
-  wb_path,
-  obj,
+  idata,
   aggFun = "mean",
   cf,
   mos = 0,
@@ -16,9 +15,7 @@ tmdlCalcs(
 )
 }
 \arguments{
-\item{wb_path}{A file path to the .csv file containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.}
-
-\item{obj}{Alternative to wb_path input. A dataframe object containing parameter and flow data for sites of interest. File has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.}
+\item{idata}{A dataframe object containing parameter and flow data for sites of interest. Object has same column names as an EPA Water Quality Portal narrowresult object, with NumericCriterion and BeneficialUse columns added. Note that this function does not handle detection limits. These must be handled prior to calculating loading.}
 
 \item{aggFun}{String. A character object describing the function used to aggregate to daily/monthly/rec season/irrigation season values. Most typically will be one of the following: gmean, mean, max, min.}
 

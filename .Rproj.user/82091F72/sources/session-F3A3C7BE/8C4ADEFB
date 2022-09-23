@@ -3,7 +3,7 @@
     "path": "~/GitHub/dwqInsights/inst/loadFigs/app.R",
     "project_path": "inst/loadFigs/app.R",
     "type": "r_source",
-    "hash": "3679621069",
+    "hash": "2626705678",
     "contents": "",
     "dirty": false,
     "created": 1663728632652.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "129,27",
-        "scrollLine": "124"
+        "cursorPosition": "22,77",
+        "scrollLine": "20"
     },
     "folds": "",
-    "lastKnownWriteTime": 1663888735,
+    "lastKnownWriteTime": 1663953787,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1663888735600,
+    "last_content_update": 1663953787724,
     "read_only": false,
     "read_only_alternatives": []
 }
