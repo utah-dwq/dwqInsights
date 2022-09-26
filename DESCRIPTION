@@ -18,12 +18,15 @@ RoxygenNote: 7.2.1
 Imports:
     magrittr,
     leaflet,
+    leaflet.extras,
     plotly,
     RColorBrewer,
     shiny,
     shinyjs,
     shinycssloaders,
     sf,
-    scales
+    scales,
+    sortable,
+    ggplot2
 Remotes:
     wqTools
