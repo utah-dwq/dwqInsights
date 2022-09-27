@@ -1,0 +1,8 @@
+"0","## GGPLOT"
+"0","sites = site_order[order(site_order$Order),]"
+"0","sites = as.character(sites$MonitoringLocationIdentifier)"
+"0","dat = output"
+"0","dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)"
+"0",""
+"0","f = ggplot(dat, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color=""#646464"")+scale_fill_manual(values= colorsy)+theme_classic()+labs(x=""Monitoring Location ID"", y=unique(dat$ResultMeasure.MeasureUnitCode))+stat_summary(fun=gmean, geom=""point"", fill=""#FFB800"",color=""black"", size=2.5, shape=23)+geom_hline(yintercept=unique(dat$NumericCriterion), color=""#cb181d"",size=0.5)+theme(legend.position = ""none"", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)"
+"0","f"
