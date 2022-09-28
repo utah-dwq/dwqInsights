@@ -1,6 +1,7 @@
 library(shiny)
 library(shinyjs)
 library(dplyr)
+library(tidyr)
 library(wqTools)
 library(leaflet)
 library(leaflet.extras)
@@ -25,36 +26,46 @@ ui <- fluidPage(
            column(2, downloadButton("template","Download template"), offset=6)),
   fluidRow(column(3,radioButtons("aggfun", "Daily aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="Arithmetic mean")),
            column(3, numericInput("mos","Margin of safety", value=0, min=0, max=1)),
-           column(3, numericInput("cf","Loading correction factor", value=0)),
-           column(3, textInput("loadunit","Loading units", value=""))),
+           column(3, numericInput("cf","Loading correction factor", value=24465715)),
+           column(3, textInput("loadunit","Loading units", value="MPN/day"))),
   fluidRow(column(2, uiOutput("calcs"))),
   br(),
-  navlistPanel("Output Menu",id="outmenu",
-               tabPanel("Summary Table",
-                        fluidRow(column(12, uiOutput("summ_sites"))),
-                        fluidRow(column(4, uiOutput("summ_go"))),
-                        br(),
-                        fluidRow(column(4, uiOutput("summ_dwn"))),
-                        fluidRow(column(12, DT::dataTableOutput("summ")))),
-               tabPanel("Upstream-Downstream",
-                        fluidRow(column(12, uiOutput("ud_sites"))),
-                        fluidRow(column(4, uiOutput("ud_agg"))),
-                        fluidRow(column(4, uiOutput("ud_go"))),
-                        br(),
-                        fluidRow(column(4, uiOutput("ud_dwn"))),
-                        fluidRow(column(12, plotOutput("ud_plot")))
-                        ),
-               tabPanel("Timeseries"),
-               tabPanel("Monthly Concentration"),
-               tabPanel("Monthly Loading"),
-               tabPanel("Load Duration Curve")
-               )
+  tabsetPanel(
+    tabPanel("Summary Table",
+             br(),
+             sidebarPanel(fluidRow(column(12,uiOutput("summ_sites"))),
+                          fluidRow(column(4, uiOutput("summ_go")))),
+             mainPanel(fluidRow(column(4, uiOutput("summ_dwn"))),
+                       fluidRow(column(12, DT::dataTableOutput("summ"))))),
+    tabPanel("Concentration Plots",
+             br(),
+             fluidRow(column(12, uiOutput("conc_sites"))),
+             fluidRow(column(4, uiOutput("conc_go"))),
+             fluidRow(column(6, uiOutput("conc_sel"))),
+             fluidRow(column(4, uiOutput("conc_agg"))),
+             br(),
+             fluidRow(column(4, uiOutput("conc_dwn"))),
+             fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "800px")))),
+    tabPanel("Loading Plots",
+             br(),
+             sidebarPanel(fluidRow(column(12, uiOutput("load_site"))),
+                          fluidRow(column(12, uiOutput("load_sel")))),
+             mainPanel(fluidRow(column(4, uiOutput(("load_dwn")))),
+                       fluidRow(column(12, plotOutput("load_plot",width="100%", height = "800px"))))),
+    tabPanel("Flow Plots",
+             br(),
+             )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   # create object to hold reactive values
   reactives = reactiveValues()
+
+  # geometric mean
+  gmean = function(x){exp(mean(log(x)))}
+
   # allows user to download the data template
   output$template <- downloadHandler(
     filename = function() {
@@ -83,7 +94,7 @@ server <- function(input, output) {
       }else{
         # data is now reactive
         reactives$dat = dat
-        params = paste(unique(dat$CharacteristicName), collapse = "and ")
+        params = paste(unique(dat$CharacteristicName), collapse = " and ")
         showModal(modalDialog(title="Check",paste0("This dataset contains ",params," data. If Flow is missing, you may still create summary tables and concentration-based plots by populating the margin of safety and correction factor values as zero before clicking run. Otherwise, populate the margin of safety and correction factor values needed to calculate loading in amount/day." )))
         }
       }
@@ -95,21 +106,27 @@ server <- function(input, output) {
   })
   # Runs TMDL calc function when button is pressed
   observeEvent(input$calcs,{
-    calcdat = tmdlCalcs(idata=reactives$dat, aggFun=input$aggfun, input$cf, input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
+    dat <<- reactives$dat
+    aggFun <<- input$aggfun
+    cf <<- input$cf
+    mos <<- input$mos
+    calcdat = dwqInsights::tmdlCalcs(idata=reactives$dat, aggFun=input$aggfun, cf = input$cf, mos = input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
     reactives$calcdat = calcdat
+    if("Observed_Loading"%in%names(calcdat)){
+      reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))
+    }
     # summary values for all data
-    gmean = function(x){exp(mean(log(x)))}
-    dat_agg = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(daterange = paste0(min(Date)," to ",max(Date)),samplesize=length(DailyResultMeasureValue),minconc = min(DailyResultMeasureValue),arithmean=mean(DailyResultMeasureValue),maxconc = max(DailyResultMeasureValue), perc_exc = sum(Exceeds)/length(Exceeds)*100)
-    rec_mean = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(rec_ssn_arithmean=mean(DailyResultMeasureValue),rec_ssn_perc_exc = sum(Exceeds)/length(Exceeds)*100)
+    dat_agg = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Date_Range = paste0(min(Date)," to ",max(Date)),Sample_Size=length(DailyResultMeasureValue),Minimum_Concentration = min(DailyResultMeasureValue),Arithmetic_Mean_Concentration=mean(DailyResultMeasureValue),Maximum_Concentration = max(DailyResultMeasureValue), Percent_Exceeding_Criterion = sum(Exceeds)/length(Exceeds)*100)
+    rec_mean = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Rec_Season_Arithmetic_Mean_Concentration=mean(DailyResultMeasureValue),Rec_Season_Percent_Exceeding_Criterion = sum(Exceeds)/length(Exceeds)*100)
     dat_agg = merge(dat_agg, rec_mean, all = TRUE)
     if(input$aggfun=="gmean"){
-      dat_agg_geo = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(geomean = gmean(DailyResultMeasureValue))
-      rec_geo = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(rec_ssn_geomean=gmean(DailyResultMeasureValue))
+      dat_agg_geo = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Geometric_Mean_Concentration = gmean(DailyResultMeasureValue))
+      rec_geo = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Rec_Season_Geometric_Mean_Concentration=gmean(DailyResultMeasureValue))
       dat_agg_geo = merge(dat_agg_geo, rec_geo, all = TRUE)
       dat_agg = merge(dat_agg, dat_agg_geo, all = TRUE)
     }
     if("DailyFlowValue"%in%colnames(calcdat)){
-      flo_agg = calcdat%>%dplyr::filter(!is.na(DailyFlowValue))%>%group_by(MonitoringLocationIdentifier, ResultMeasure.MeasureUnitCode)%>%summarise(daterange = paste0(min(Date)," to ",max(Date)),samplesize=length(DailyFlowValue),minconc = min(DailyFlowValue),arithmean=mean(DailyFlowValue),maxconc = max(DailyFlowValue))
+      flo_agg = calcdat%>%dplyr::filter(!is.na(DailyFlowValue))%>%group_by(MonitoringLocationIdentifier, ResultMeasure.MeasureUnitCode)%>%summarise(Date_Range = paste0(min(Date)," to ",max(Date)),Sample_Size=length(DailyFlowValue),Minimum_Concentration = min(DailyFlowValue),Arithmetic_Mean_Concentration=mean(DailyFlowValue),Maximum_Concentration = max(DailyFlowValue))
       dat_agg = plyr::rbind.fill(dat_agg, flo_agg)
       dat_agg$CharacteristicName[is.na(dat_agg$CharacteristicName)] = "Flow"
     }
@@ -122,7 +139,7 @@ server <- function(input, output) {
     req(reactives$summ)
     sites = unique(reactives$calcdat$MonitoringLocationIdentifier)
     sites = sites[order(sites)]
-    checkboxGroupInput("summ_sites","Select sites of interest", choices=c(sites), selected=c(sites),inline=TRUE)
+    checkboxGroupInput("summ_sites","Select sites of interest", choices=c(sites), selected=c(sites))
   })
 
   # Go button to create table
@@ -154,75 +171,175 @@ server <- function(input, output) {
   # Create data table
   output$summ <- DT::renderDataTable({
     req(reactives$summ_filter)
-    DT::datatable(reactives$summ_filter)
+    DT::datatable(reactives$summ_filter, rownames=FALSE)
   })
 
   # Makes site list appear when loading and summary calcs finish
-  output$ud_sites <- renderUI({
+  output$conc_sites <- renderUI({
     req(reactives$summ)
     sites = unique(reactives$calcdat$MonitoringLocationIdentifier)
     sites = sites[order(sites)]
     bucket_list(header="Drag sites to right column in the order you'd like displayed in the plot",
-                group_name = "ud_group",
+                group_name = "conc_group",
                 orientation = "horizontal",
                 add_rank_list(text = "Drag from here",
-                              labels=as.list(sites), input_id = "ud_list_1"),
+                              labels=as.list(sites), input_id = "conc_list_1"),
                 add_rank_list(text="...to here (MAX 8 SITES)",
                               labels=NULL,
-                              input_id = "ud_list_2"))
+                              input_id = "conc_list_2"))
     })
 
-
-  # Upstream-downstream aggregating function
-  output$ud_agg <- renderUI({
-    req(input$ud_list_2)
-    radioButtons("ud_agg", label="Choose site-level aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="Arithmetic mean")
-  })
-
   # Go button to create plot
-  output$ud_go <- renderUI({
-    req(input$ud_agg)
-    actionButton("ud_go","Create upstream-downstream plot")
+  output$conc_go <- renderUI({
+    req(input$conc_list_2)
+    actionButton("conc_go","Confirm site list and order")
   })
 
-  # Filter dataset to selected sites
-  observeEvent(input$ud_go,{
-    dat = subset(reactives$calcdat, reactives$calcdat$MonitoringLocationIdentifier%in%input$ud_list_2&!reactives$calcdat$CharacteristicName%in%c("Flow"))
+  # Filter dataset to selected sites after clicking 'go'
+  observeEvent(input$conc_go,{
+    dat = subset(reactives$calcdat, reactives$calcdat$MonitoringLocationIdentifier%in%input$conc_list_2&!reactives$calcdat$CharacteristicName%in%c("Flow"))
     sites_num = length(unique(dat$MonitoringLocationIdentifier))
     if(sites_num>8){
       showModal(modalDialog(title="Whoops!","Please select 8 or fewer sites to plot."))
     }else{
-      reactives$ud = dat}
-      })
-
-  udplot <- reactive({
-    ud = reactives$ud
-    ggplot(data=ud, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values=colorz)+theme_classic()+labs(x="Monitoring Location ID", y=unique(ud$ResultMeasure.MeasureUnitCode))+stat_summary(fun=input$ud_agg, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(ud$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
+      reactives$conc = dat}
   })
 
+  # Radio button to select plot to make
+  output$conc_sel <- renderUI({
+    req(reactives$conc)
+    radioButtons("conc_sel","Select plot type (note that these plots use all uploaded data)",choices = c("Dot Plot","Timeseries","Monthly Means"))
+  })
+
+  # Upstream-downstream aggregating function
+  output$conc_agg <- renderUI({
+    req(reactives$conc)
+    radioButtons("conc_agg", label="Choose site-level aggregating function (doesn't matter for timeseries)",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"))
+  })
+
+  concplot <- reactive({
+    req(input$conc_agg)
+    conc = reactives$conc
+    conc$month = lubridate::month(conc$Date, label=TRUE)
+    conc = conc[order(conc$Date),]
+    conc$MonitoringLocationIdentifier = factor(as.character(conc$MonitoringLocationIdentifier), levels = input$conc_list_2)
+    if(input$conc_agg=="gmean"){func=gmean}else{func="mean"}
+    if(input$conc_sel=="Dot Plot"){
+      reactives$width=7
+      reactives$height=7
+      g = ggplot(data=conc, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values=colorz)+theme_classic()+labs(x="Monitoring Location ID", y=unique(conc$ResultMeasure.MeasureUnitCode))+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
+    }
+    if(input$conc_sel=="Timeseries"){
+      reactives$width=8
+      reactives$height=10
+      g = ggplot(conc, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(conc$Date), max(conc$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)
+    }
+    if(input$conc_sel=="Monthly Means"){
+      reactives$width=8
+      reactives$height=10
+      conc = conc[order(conc$month),]
+      g = ggplot(conc, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+    }
+    print(g)
+      })
+
   # Create US-DS plot in app
-  output$ud_plot <- renderPlot({
-    req(reactives$ud)
-    udplot()
+  output$conc_plot <- renderPlot({
+    req(input$conc_agg)
+    concplot()
       })
 
   # download US-DS plot
-  output$ud_dwn <- renderUI({
-    req(reactives$ud)
-    downloadButton("ud_dwn1",label="Download plot")
+  output$conc_dwn <- renderUI({
+    req(input$conc_agg)
+    downloadButton("conc_dwn1",label="Download plot")
   })
 
   # Download Handler
-  output$ud_dwn1 <- downloadHandler(
+  output$conc_dwn1 <- downloadHandler(
     filename = function() {
-      "loadFigs_upstream_downstream.png"
+      "loadFigs_concplot.png"
     },
     content = function(file) {
-      ggsave(file, udplot())
+      ggsave(file, concplot(), width=reactives$width, height=reactives$height, units="in")
     },
     contentType='image/png'
   )
 
+  # Loading plots
+  output$load_site <- renderUI({
+    req(reactives$loading)
+    selectInput("load_site","Select Site", choices=unique(reactives$loading$MonitoringLocationIdentifier))
+  })
+
+  output$load_sel <- renderUI({
+    req(reactives$loading)
+    radioButtons("load_sel","Select Plot Type", choices=c("Load Duration Curve","Monthly Loading Bar Plot"))
+  })
+
+  output$load_dwn <- renderUI({
+    req(input$load_sel)
+    downloadButton("load_dwn1","Download Plot")
+  })
+
+  output$load_dwn1 <- downloadHandler(
+    filename = function() {
+      "loadFigs_loadplot.png"
+    },
+    content = function(file) {
+      ggsave(file, loadplot(), width=reactives$width, height=reactives$height, units="in")
+    },
+    contentType='image/png'
+  )
+
+  loadplot <- reactive({
+    req(input$load_sel)
+    reactives$width=7
+    reactives$height=7
+    loading = reactives$loading
+    if(input$load_sel=="Load Duration Curve"){
+      loading = loading[order(loading$Flow_Percentile),]
+      exceed = subset(loading, !is.na(loading$Observed_Loading))
+      exceed = within(exceed,{
+        regime=NA
+        regime[Flow_Percentile<10] = "High \nFlows"
+        regime[Flow_Percentile>9&Flow_Percentile<40] = "Moist \nConditions"
+        regime[Flow_Percentile>39&Flow_Percentile<60] = "Mid-Range \nFlows"
+        regime[Flow_Percentile>59&Flow_Percentile<90] = "Dry \nConditions"
+        regime[Flow_Percentile>89&Flow_Percentile<101] = "Low \nFlows"
+      })
+
+      exceed = exceed%>%group_by(MonitoringLocationIdentifier, regime)%>%summarise(perc_exceed=round(length(Exceeds[Exceeds==1])/length(Exceeds)*100,digits=0))
+
+      exceed = within(exceed,{
+        place = NA
+        place[regime=="High \nFlows"] =5
+        place[regime=="Moist \nConditions"] = 25
+        place[regime=="Mid-Range \nFlows"]=50
+        place[regime=="Dry \nConditions"] = 75
+        place[regime=="Low \nFlows"] = 95
+      })
+
+      exceed$label = paste0(exceed$regime,"\n(",exceed$perc_exceed,"%)")
+      why = max(c(loading$TMDL,loading$Observed_Loading), na.rm = TRUE)*0.8
+      g = ggplot(loading, aes(x=Flow_Percentile))+geom_blank()+geom_vline(xintercept=c(10,40,60,90),linetype=2)+geom_line(aes(y=TMDL, color="TMDL"),color="#034963",size=1.5)+geom_point(aes(y=Observed_Loading, color="Observed_Loading"),shape=21, color="#464646",fill="#00a1c6",size=3)+theme_classic()+labs(x="Flow Percentile",y=input$loadunit)+annotate("text",x=exceed$place,y=why, label=exceed$label)+scale_color_manual(name = "",values = c( "TMDL" = "#034963", "Observed_Loading" = "#00a1c6"),labels = c("TMDL", "Observed Loading"))
+     }
+    if(input$load_sel=="Monthly Loading Bar Plot"){
+      reactives$width=7
+      reactives$height=7
+      ldc_month = loading%>%dplyr::select(Date,MonitoringLocationIdentifier,TMDL,Observed_Loading)%>%tidyr::pivot_longer(cols=c(TMDL,Observed_Loading),names_to="Type",values_to="Loading",values_drop_na=TRUE)
+      ldc_month$month = lubridate::month(ldc_month$Date, label=TRUE, abbr=TRUE)
+      ldc_month1 = ldc_month%>%dplyr::group_by(MonitoringLocationIdentifier,Type,month)%>%dplyr::summarise(mean_Load = mean(Loading))
+      g = ggplot(ldc_month1, aes(x=month, y=mean_Load, fill=Type))+geom_blank()+theme_classic()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(ldc_month1$mean_Load*1.1)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+labs(x="Month",y=input$loadunit)+geom_col(position="dodge", color="#646464")+scale_fill_manual(values=c("#00a1c6","#034963"),name="",breaks=c("Observed_Loading","TMDL"),labels=c("Observed","TMDL"))+guides(color="none")
+        }
+    print(g)
+  })
+
+  # Create US-DS plot in app
+  output$load_plot <- renderPlot({
+    req(input$load_sel)
+    loadplot()
+  })
 
 }
 
