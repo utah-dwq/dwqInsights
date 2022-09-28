@@ -1,6 +1,0 @@
-#### Playing with TADA
-
-remotes::install_github("USEPA/TADA")
-remotes::install_github("USGS-R/dataRetrieval", dependencies=TRUE)
-library(TADA)
-library(dataRetrieval)

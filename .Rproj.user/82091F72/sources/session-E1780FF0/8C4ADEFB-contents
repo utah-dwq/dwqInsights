@@ -28,7 +28,8 @@ ui <- fluidPage(
            column(3, numericInput("mos","Margin of safety", value=0, min=0, max=1)),
            column(3, numericInput("cf","Loading correction factor", value=24465715)),
            column(3, textInput("loadunit","Loading units", value="MPN/day"))),
-  fluidRow(column(2, uiOutput("calcs"))),
+  fluidRow(column(3, uiOutput("calcs")),
+           column(3, uiOutput("calcs_dwn"))),
   br(),
   tabsetPanel(
     tabPanel("Summary Table",
@@ -49,7 +50,8 @@ ui <- fluidPage(
     tabPanel("Loading Plots",
              br(),
              sidebarPanel(fluidRow(column(12, uiOutput("load_site"))),
-                          fluidRow(column(12, uiOutput("load_sel")))),
+                          fluidRow(column(12, uiOutput("load_sel"))),
+                          fluidRow(column(12, uiOutput("load_agg")))),
              mainPanel(fluidRow(column(4, uiOutput(("load_dwn")))),
                        fluidRow(column(12, plotOutput("load_plot",width="100%", height = "800px"))))),
     tabPanel("Flow Plots",
@@ -106,12 +108,13 @@ server <- function(input, output) {
   })
   # Runs TMDL calc function when button is pressed
   observeEvent(input$calcs,{
-    dat <<- reactives$dat
-    aggFun <<- input$aggfun
-    cf <<- input$cf
-    mos <<- input$mos
     calcdat = dwqInsights::tmdlCalcs(idata=reactives$dat, aggFun=input$aggfun, cf = input$cf, mos = input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
     reactives$calcdat = calcdat
+    calcdat_out = calcdat
+    calcdat_out$Margin_of_Safety = input$mos
+    calcdat_out$Correction_Factor = input$cf
+    calcdat_out$Loading_Unit = input$loadunit
+    reactives$calcdat_out = calcdat_out
     if("Observed_Loading"%in%names(calcdat)){
       reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))
     }
@@ -133,6 +136,19 @@ server <- function(input, output) {
     dat_agg = dat_agg[order(dat_agg$MonitoringLocationIdentifier),]
     reactives$summ <- dat_agg
     })
+
+  output$calcs_dwn <- renderUI({
+    req(reactives$calcdat)
+    downloadButton("calcs_dwn1","Download Calculation Spreadsheet")
+  })
+
+  output$calcs_dwn1 <- downloadHandler(
+    filename = function() {
+    "loadCalcs_output_spreadsheet.csv"
+  },
+  content = function(file) {
+    write.csv(reactives$calcdat_out, file, row.names = FALSE)
+  })
 
   # Makes site list appear when loading and summary calcs finish
   output$summ_sites <- renderUI({
@@ -208,7 +224,7 @@ server <- function(input, output) {
   # Radio button to select plot to make
   output$conc_sel <- renderUI({
     req(reactives$conc)
-    radioButtons("conc_sel","Select plot type (note that these plots use all uploaded data)",choices = c("Dot Plot","Timeseries","Monthly Means"))
+    radioButtons("conc_sel","Select plot type (note that these plots use all uploaded data)",choices = c("Dot Plot","Monthly Means","Timeseries"))
   })
 
   # Upstream-downstream aggregating function
@@ -277,6 +293,12 @@ server <- function(input, output) {
     radioButtons("load_sel","Select Plot Type", choices=c("Load Duration Curve","Monthly Loading Bar Plot"))
   })
 
+  # Upstream-downstream aggregating function
+  output$load_agg <- renderUI({
+    req(reactives$loading)
+    radioButtons("load_agg", label="Choose month-level aggregating function (doesn't matter for load duration curve)",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"))
+  })
+
   output$load_dwn <- renderUI({
     req(input$load_sel)
     downloadButton("load_dwn1","Download Plot")
@@ -294,9 +316,10 @@ server <- function(input, output) {
 
   loadplot <- reactive({
     req(input$load_sel)
-    reactives$width=7
-    reactives$height=7
+    reactives$width=8
+    reactives$height=6
     loading = reactives$loading
+    loading = subset(reactives$loading, reactives$loading$MonitoringLocationIdentifier%in%c(input$load_site))
     if(input$load_sel=="Load Duration Curve"){
       loading = loading[order(loading$Flow_Percentile),]
       exceed = subset(loading, !is.na(loading$Observed_Loading))
@@ -319,18 +342,21 @@ server <- function(input, output) {
         place[regime=="Dry \nConditions"] = 75
         place[regime=="Low \nFlows"] = 95
       })
-
       exceed$label = paste0(exceed$regime,"\n(",exceed$perc_exceed,"%)")
       why = max(c(loading$TMDL,loading$Observed_Loading), na.rm = TRUE)*0.8
       g = ggplot(loading, aes(x=Flow_Percentile))+geom_blank()+geom_vline(xintercept=c(10,40,60,90),linetype=2)+geom_line(aes(y=TMDL, color="TMDL"),color="#034963",size=1.5)+geom_point(aes(y=Observed_Loading, color="Observed_Loading"),shape=21, color="#464646",fill="#00a1c6",size=3)+theme_classic()+labs(x="Flow Percentile",y=input$loadunit)+annotate("text",x=exceed$place,y=why, label=exceed$label)+scale_color_manual(name = "",values = c( "TMDL" = "#034963", "Observed_Loading" = "#00a1c6"),labels = c("TMDL", "Observed Loading"))
      }
     if(input$load_sel=="Monthly Loading Bar Plot"){
-      reactives$width=7
-      reactives$height=7
+      reactives$width=8
+      reactives$height=6
       ldc_month = loading%>%dplyr::select(Date,MonitoringLocationIdentifier,TMDL,Observed_Loading)%>%tidyr::pivot_longer(cols=c(TMDL,Observed_Loading),names_to="Type",values_to="Loading",values_drop_na=TRUE)
       ldc_month$month = lubridate::month(ldc_month$Date, label=TRUE, abbr=TRUE)
-      ldc_month1 = ldc_month%>%dplyr::group_by(MonitoringLocationIdentifier,Type,month)%>%dplyr::summarise(mean_Load = mean(Loading))
-      g = ggplot(ldc_month1, aes(x=month, y=mean_Load, fill=Type))+geom_blank()+theme_classic()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(ldc_month1$mean_Load*1.1)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+labs(x="Month",y=input$loadunit)+geom_col(position="dodge", color="#646464")+scale_fill_manual(values=c("#00a1c6","#034963"),name="",breaks=c("Observed_Loading","TMDL"),labels=c("Observed","TMDL"))+guides(color="none")
+      if(input$load_agg=="mean"){
+        ldc_month1 = ldc_month%>%dplyr::group_by(MonitoringLocationIdentifier,Type,month)%>%dplyr::summarise(mean_Load = mean(Loading))
+      }else{
+        ldc_month1 = ldc_month%>%dplyr::group_by(MonitoringLocationIdentifier,Type,month)%>%dplyr::summarise(mean_Load = gmean(Loading))
+      }
+        g = ggplot(ldc_month1, aes(x=month, y=mean_Load, fill=Type))+geom_blank()+theme_classic()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(ldc_month1$mean_Load*1.1)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+labs(x="Month",y=input$loadunit)+geom_col(position="dodge", color="#646464")+scale_fill_manual(values=c("#00a1c6","#034963"),name="",breaks=c("Observed_Loading","TMDL"),labels=c("Observed","TMDL"))+guides(color="none")
         }
     print(g)
   })
