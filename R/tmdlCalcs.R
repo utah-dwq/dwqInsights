@@ -90,7 +90,7 @@ tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_
     flow.agg$Flow_Percentile = flow_perc(flow.agg$DailyFlowValue)
     param.agg.dv = merge(param.agg.dv, flow.agg, all.x = TRUE)
     param.agg.dv$Observed_Loading = param.agg.dv$DailyResultMeasureValue*cf*param.agg.dv$DailyFlowValue
-    param.agg.dv$TMDL = param.agg.dv$NumericCriterion*cf*param.agg.dv$DailyFlowValue*(1-mos)
+    param.agg.dv$TMDL = as.numeric(param.agg.dv$NumericCriterion)*cf*param.agg.dv$DailyFlowValue*(1-mos)
   }
   ############################ SAVE WORKBOOK FILE WITH NEW SHEETS #########################
   if(exportfromfunc){
