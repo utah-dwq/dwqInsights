@@ -13,7 +13,7 @@ library(sortable)
 library(RColorBrewer)
 
 template = data.frame("MonitoringLocationIdentifier"=c("MLID_1234"),
-                      "ActivityStartDate"=c("01/01/2022"),"CharacteristicName"=c("Pollutant_A"),"ResultMeasureValue"=c(50),"ResultMeasure.MeasureUnitCode"=c("mg/L"),"BeneficialUse"=c("2A"),"NumericCriterion"=c(25),"OtherColumnsOK"=c("blank"))
+                      "ActivityStartDate"=c("01/01/2022"),"CharacteristicName"=c("Pollutant_A"),"ResultMeasureValue"=c(50),"ResultMeasure.MeasureUnitCode"=c("mg/L"),"BeneficialUse"=c("2A"),"NumericCriterion"=c(25),"OtherColumnsOK"=c("NOTE: Make sure your dates are in the mm/dd/yyyy format and all of your ResultMeasureValue and Numeric Criterion values are numeric."))
 colorz = c("#034963","#0b86a3","#00a1c6","#cde3e2", "#BFD7B5","#D1CAA1","#D1D2F9","#77625C","#EFA9AE")
 gmean = function(x){exp(mean(log(x)))}
 # Define UI for application that draws a histogram
@@ -79,6 +79,16 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
+  # Hide tabs until worksheet uploaded
+  observe({
+    if(is.null(reactives$calcdat)){
+      hideTab(inputId="tabs",target="Summary Table")
+      hideTab(inputId="tabs",target="Concentration Plots")
+      hideTab(inputId="tabs",target="Loading Plots")
+      hideTab(inputId="tabs",target="Flow Plots")
+    }
+  })
+
   # Welcome!
   observe({
     showNotification("Welcome! Upload your data and select an aggregating function to get started. If you are unsure of the correct data format, please download the template using the button at the top right. Hover over application inputs for more information.", duration = 20)
@@ -99,16 +109,6 @@ server <- function(input, output) {
     }
   )
 
-  # Hide tabs until worksheet uploaded
-  observe({
-    if(is.null(reactives$calcdat)){
-      hideTab(inputId="tabs",target="Summary Table")
-      hideTab(inputId="tabs",target="Concentration Plots")
-      hideTab(inputId="tabs",target="Loading Plots")
-      hideTab(inputId="tabs",target="Flow Plots")
-    }
-  })
-
   # Upload dataset
   observeEvent(input$uplode,{
     file=input$uplode$datapath
@@ -121,16 +121,10 @@ server <- function(input, output) {
       text = paste(missing,collapse=", ")
       showModal(modalDialog(title="Whoops!",paste0(text," column(s) missing from input dataset. Refresh this app and add required column(s) before running.")))
     }else{
-      # check to ensure date is in the right format
-      date_test = as.Date(dat$ActivityStartDate[1],format="%m/%d/%Y")
-      if(is.na(date_test)){
-        showModal(modalDialog(title="Whoops!","The ActivityStartDate column needs to be in the format mm/dd/YYYY. Please convert dates and try again."))
-      }else{
         # data is now reactive
         reactives$dat = dat
         params = paste(unique(dat$CharacteristicName), collapse = " and ")
         showModal(modalDialog(title="Check",paste0("This dataset contains ",params," data. If Flow is missing, you may still create summary tables and concentration-based plots by populating the margin of safety and correction factor values as zero before clicking run. Otherwise, populate the margin of safety and correction factor values needed to calculate loading in amount/day." )))
-        }
       }
   })
   # Once data loaded, allow user to populate fields and then calculate summaries/aggregations.
