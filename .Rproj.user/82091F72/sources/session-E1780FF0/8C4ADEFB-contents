@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyjs)
+library(shinyBS)
 library(dplyr)
 library(tidyr)
 library(wqTools)
@@ -25,9 +26,13 @@ ui <- fluidPage(
   fluidRow(column(4, fileInput("uplode","Upload data",accept=".csv")),
            column(2, downloadButton("template","Download template"), offset=6)),
   fluidRow(column(3,radioButtons("aggfun", "Daily aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="Arithmetic mean")),
+           bsTooltip("aggfun",title="The geometric mean is typically used to aggregate E. coli to a daily mean, while the standard arithmetic mean is used for all other pollutants."),
            column(3, numericInput("mos","Margin of safety", value=0, min=0, max=1)),
+           bsTooltip("mos",title="This field adds an explicit margin of safety to the TMDL calculation and is expressed as a proportion. For example, a value of 0.1 (10% margin of safety) is subtracted from 1 and then multiplied by the numeric criterion and correction factor to obtain the TMDL less a margin of safety. In this example, the calculated TMDL is 90% of the TMDL calculation without a margin of safety (or a proportion of 0)."),
            column(3, numericInput("cf","Loading correction factor", value=24465715)),
-           column(3, textInput("loadunit","Loading units", value="MPN/day"))),
+           bsTooltip("cf",title="The correction factor acts as a link between the pollutant unit, flow unit, and desired loading unit. The loading unit should resemble [amount]/[time]. The value provided is the correction factor for E. coli expressed in MPN/100 mL and flow expressed in cubic feet per second to obtain the unit MPN/day."),
+           column(3, textInput("loadunit","Loading units", value="MPN/day")),
+           bsTooltip("loadunit",title="The loading unit should resemble [amount]/[time]. This value is used to correctly label loading figures.")),
   fluidRow(column(3, uiOutput("calcs")),
            column(3, uiOutput("calcs_dwn"))),
   br(),
@@ -52,6 +57,8 @@ ui <- fluidPage(
              fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "600px")))),
     tabPanel("Loading Plots",
              br(),
+             p("The load duration curve plot shows how observed loading and TMDL loading change with flow regime/flow percentile. The monthly loading bar plot shows how the mean observed loading compares to TMDL loading by month."),
+             br(),
              sidebarPanel(fluidRow(column(12, uiOutput("load_site"))),
                           fluidRow(column(12, uiOutput("load_sel"))),
                           fluidRow(column(12, uiOutput("load_agg")))),
@@ -59,12 +66,23 @@ ui <- fluidPage(
                        fluidRow(column(12, plotOutput("load_plot",width="100%", height = "400px"))))),
     tabPanel("Flow Plots",
              br(),
+             p("The timeseries plot shows all of the flow data for a given site across time. The monthly bar plot shows the average flow by month using all the flow data provided for that site."),
+             br(),
+             sidebarPanel(fluidRow(column(12, uiOutput("flow_site"))),
+                          fluidRow(column(12, uiOutput("flow_sel")))),
+             mainPanel(fluidRow(column(4, uiOutput(("flow_dwn")))),
+                       fluidRow(column(12, plotOutput("flow_plot",width="100%", height = "400px"))))
              )
   )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+
+  # Welcome!
+  observe({
+    showNotification("Welcome! Upload your data and select an aggregating function to get started. If you are unsure of the correct data format, please download the template using the button at the top right. Hover over application inputs for more information.", duration = 20)
+  })
   # create object to hold reactive values
   reactives = reactiveValues()
 
@@ -131,10 +149,13 @@ server <- function(input, output) {
     reactives$calcdat_out = calcdat_out
     if("Observed_Loading"%in%names(calcdat)){
       perc = unique(calcdat$Flow_Percentile)
+      reactives$flow = subset(reactives$dat, reactives$dat$CharacteristicName=="Flow")
+      reactives$flow$Date = as.Date(reactives$flow$ActivityStartDate, format="%m/%d/%Y")}
       if(length(perc)==1&is.na(perc)){
         showModal(modalDialog(title="Warning","This dataset contains flow data that is not associated with a monitoring location that has pollutant data. Loadings will not be calculated."))
-      }else{reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))}
-    }
+      }else{
+        reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))
+        }
     # summary values for all data
     dat_agg = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Date_Range = paste0(min(Date)," to ",max(Date)),Sample_Size=length(DailyResultMeasureValue),Minimum_Concentration = min(DailyResultMeasureValue),Arithmetic_Mean_Concentration=mean(DailyResultMeasureValue),Maximum_Concentration = max(DailyResultMeasureValue), Percent_Exceeding_Criterion = sum(Exceeds)/length(Exceeds)*100)
     rec_mean = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Rec_Season_Arithmetic_Mean_Concentration=mean(DailyResultMeasureValue),Rec_Season_Percent_Exceeding_Criterion = sum(Exceeds)/length(Exceeds)*100)
@@ -176,6 +197,8 @@ server <- function(input, output) {
     }
     if(!is.null(reactives$loading)){
       showTab(inputId="tabs",target="Loading Plots")
+    }
+    if(!is.null(reactives$flow)){
       showTab(inputId="tabs",target="Flow Plots")
     }
   })
@@ -325,7 +348,7 @@ server <- function(input, output) {
     radioButtons("load_sel","Select Plot Type", choices=c("Load Duration Curve","Monthly Loading Bar Plot"))
   })
 
-  # Upstream-downstream aggregating function
+  # Loading aggregating function
   output$load_agg <- renderUI({
     req(reactives$loading)
     radioButtons("load_agg", label="Choose month-level aggregating function (doesn't matter for load duration curve)",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"))
@@ -351,7 +374,7 @@ server <- function(input, output) {
     reactives$width=8
     reactives$height=6
     loading = reactives$loading
-    loading = subset(reactives$loading, reactives$loading$MonitoringLocationIdentifier%in%c(input$load_site))
+    loading = subset(loading, loading$MonitoringLocationIdentifier%in%c(input$load_site))
     if(input$load_sel=="Load Duration Curve"){
       loading = loading[order(loading$Flow_Percentile),]
       exceed = subset(loading, !is.na(loading$Observed_Loading))
@@ -379,8 +402,6 @@ server <- function(input, output) {
       g = ggplot(loading, aes(x=Flow_Percentile))+geom_blank()+geom_vline(xintercept=c(10,40,60,90),linetype=2)+geom_line(aes(y=TMDL, color="TMDL"),color="#034963",size=1.5)+geom_point(aes(y=Observed_Loading, color="Observed_Loading"),shape=21, color="#464646",fill="#00a1c6",size=3)+theme_classic()+labs(x="Flow Percentile",y=input$loadunit)+annotate("text",x=exceed$place,y=why, label=exceed$label)+scale_color_manual(name = "",values = c( "TMDL" = "#034963", "Observed_Loading" = "#00a1c6"),labels = c("TMDL", "Observed Loading"))
      }
     if(input$load_sel=="Monthly Loading Bar Plot"){
-      reactives$width=8
-      reactives$height=6
       ldc_month = loading%>%dplyr::select(Date,MonitoringLocationIdentifier,TMDL,Observed_Loading)%>%tidyr::pivot_longer(cols=c(TMDL,Observed_Loading),names_to="Type",values_to="Loading",values_drop_na=TRUE)
       ldc_month$month = lubridate::month(ldc_month$Date, label=TRUE, abbr=TRUE)
       if(input$load_agg=="mean"){
@@ -393,10 +414,60 @@ server <- function(input, output) {
     print(g)
   })
 
-  # Create US-DS plot in app
+  # Create Loading plot in app
   output$load_plot <- renderPlot({
     req(input$load_sel)
     loadplot()
+  })
+
+  # Flow plots
+  output$flow_site <- renderUI({
+    req(reactives$flow)
+    selectInput("flow_site","Select Site", choices=unique(reactives$flow$MonitoringLocationIdentifier))
+  })
+
+  output$flow_sel <- renderUI({
+    req(reactives$flow)
+    radioButtons("flow_sel","Select Plot Type", choices=c("Timeseries","Monthly Flow Bar Plot"))
+  })
+
+  output$flow_dwn <- renderUI({
+    req(input$flow_sel)
+    downloadButton("flow_dwn1","Download Plot")
+  })
+
+  output$flow_dwn1 <- downloadHandler(
+    filename = function() {
+      "loadFigs_flowplot.png"
+    },
+    content = function(file) {
+      ggsave(file, flowplot(), width=reactives$width, height=reactives$height, units="in")
+    },
+    contentType='image/png'
+  )
+
+  flowplot <- reactive({
+    req(input$flow_sel)
+    reactives$width=8
+    reactives$height=6
+    flow = reactives$flow
+    flow = subset(flow, flow$MonitoringLocationIdentifier%in%c(input$flow_site))
+    unit = unique(flow$ResultMeasure.MeasureUnitCode)
+    if(input$flow_sel=="Timeseries"){
+      g=ggplot(flow, aes(x=Date,y=ResultMeasureValue))+geom_area(color="#646464",fill="#0b86a3")+labs(x="Date",y=unit)+theme_classic()
+        }
+    if(input$flow_sel=="Monthly Flow Bar Plot"){
+      flow$month = lubridate::month(flow$Date)
+      flo_month = flow%>%dplyr::group_by(month)%>%dplyr::summarise(mean_monthly = mean(ResultMeasureValue, na.rm=TRUE))
+      g = ggplot(flo_month, aes(x=month, y=mean_monthly))+geom_col(color="#646464",fill="#0b86a3")+labs(x="Month",y=unit)+theme_classic()+scale_x_discrete(limits=month.abb)
+        }
+    print(g)
+  })
+
+  # Create US-DS plot in app
+  output$flow_plot <- renderPlot({
+    req(input$flow_sel)
+    flowplot()
   })
 
 }
