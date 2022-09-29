@@ -23,6 +23,7 @@ Imports:
     RColorBrewer,
     shiny,
     shinyjs,
+    shinyBS,
     shinycssloaders,
     sf,
     scales,

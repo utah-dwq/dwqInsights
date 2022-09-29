@@ -3,11 +3,7 @@ library(shinyjs)
 library(shinyBS)
 library(dplyr)
 library(tidyr)
-library(wqTools)
-library(leaflet)
-library(leaflet.extras)
 library(magrittr)
-library(plotly)
 library(ggplot2)
 library(sortable)
 library(RColorBrewer)
@@ -51,7 +47,8 @@ ui <- fluidPage(
              fluidRow(column(4, uiOutput("conc_go"))),
              br(),
              fluidRow(column(4, uiOutput("conc_sel")),
-                      column(4, uiOutput("conc_agg"))),
+                      column(4, uiOutput("conc_agg")),
+                      column(4, uiOutput("conc_std"))),
              br(),
              fluidRow(column(4, uiOutput("conc_dwn"))),
              fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "600px")))),
@@ -70,7 +67,7 @@ ui <- fluidPage(
              br(),
              sidebarPanel(fluidRow(column(12, uiOutput("flow_site"))),
                           fluidRow(column(12, uiOutput("flow_sel")))),
-             mainPanel(fluidRow(column(4, uiOutput(("flow_dwn")))),
+             mainPanel(fluidRow(column(4, uiOutput("flow_dwn"))),
                        fluidRow(column(12, plotOutput("flow_plot",width="100%", height = "400px"))))
              )
   )
@@ -121,11 +118,13 @@ server <- function(input, output) {
       text = paste(missing,collapse=", ")
       showModal(modalDialog(title="Whoops!",paste0(text," column(s) missing from input dataset. Refresh this app and add required column(s) before running.")))
     }else{
-        # data is now reactive
-        reactives$dat = dat
-        params = paste(unique(dat$CharacteristicName), collapse = " and ")
-        showModal(modalDialog(title="Check",paste0("This dataset contains ",params," data. If Flow is missing, you may still create summary tables and concentration-based plots by populating the margin of safety and correction factor values as zero before clicking run. Otherwise, populate the margin of safety and correction factor values needed to calculate loading in amount/day." )))
-      }
+      dat$ResultMeasureValue = suppressWarnings(as.numeric(as.character(dat$ResultMeasureValue)))
+      dat = subset(dat, !is.na(dat$ResultMeasureValue))
+      # data is now reactive
+      reactives$dat = dat
+      params = paste(unique(dat$CharacteristicName), collapse = " and ")
+      showModal(modalDialog(title="Check",paste0("This dataset contains ",params," data. If Flow is missing, you may still create summary tables and concentration-based plots by populating the margin of safety and correction factor values as zero before clicking run. Otherwise, populate the margin of safety and correction factor values needed to calculate loading in amount/day." )))
+    }
   })
   # Once data loaded, allow user to populate fields and then calculate summaries/aggregations.
   output$calcs <- renderUI({
@@ -145,7 +144,7 @@ server <- function(input, output) {
       perc = unique(calcdat$Flow_Percentile)
       reactives$flow = subset(reactives$dat, reactives$dat$CharacteristicName=="Flow")
       reactives$flow$Date = as.Date(reactives$flow$ActivityStartDate, format="%m/%d/%Y")}
-      if(length(perc)==1&is.na(perc)){
+      if(length(perc)==1&any(is.na(perc))){
         showModal(modalDialog(title="Warning","This dataset contains flow data that is not associated with a monitoring location that has pollutant data. Loadings will not be calculated."))
       }else{
         reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))
@@ -159,11 +158,6 @@ server <- function(input, output) {
       rec_geo = calcdat%>%dplyr::filter(Rec_Season=="rec")%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName, ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Rec_Season_Geometric_Mean_Concentration=gmean(DailyResultMeasureValue))
       dat_agg_geo = merge(dat_agg_geo, rec_geo, all = TRUE)
       dat_agg = merge(dat_agg, dat_agg_geo, all = TRUE)
-    }
-    if("DailyFlowValue"%in%colnames(calcdat)){
-      flo_agg = calcdat%>%dplyr::filter(!is.na(DailyFlowValue))%>%group_by(MonitoringLocationIdentifier, ResultMeasure.MeasureUnitCode)%>%summarise(Date_Range = paste0(min(Date)," to ",max(Date)),Sample_Size=length(DailyFlowValue),Minimum_Concentration = min(DailyFlowValue),Arithmetic_Mean_Concentration=mean(DailyFlowValue),Maximum_Concentration = max(DailyFlowValue))
-      dat_agg = plyr::rbind.fill(dat_agg, flo_agg)
-      dat_agg$CharacteristicName[is.na(dat_agg$CharacteristicName)] = "Flow"
     }
     dat_agg = dat_agg[order(dat_agg$MonitoringLocationIdentifier),]
     reactives$summ <- dat_agg
@@ -282,6 +276,11 @@ server <- function(input, output) {
     }
       })
 
+  output$conc_std <- renderUI({
+    req(input$conc_sel)
+    numericInput("conc_std","Add additional standard line",value=0)
+  })
+
   concplot <- reactive({
     req(input$conc_agg)
     conc = reactives$conc
@@ -304,6 +303,9 @@ server <- function(input, output) {
       reactives$height=10
       conc = conc[order(conc$month),]
       g = ggplot(conc, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+    }
+    if(input$conc_std>0){
+      g = g+geom_hline(yintercept=unique(input$conc_std), color="#ff781f",size=0.5)
     }
     print(g)
       })
