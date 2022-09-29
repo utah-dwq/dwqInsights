@@ -50,7 +50,8 @@ tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_
     }
   start = dim(param.dat)[1]
   param.dat$Date <- as.Date(param.dat$ActivityStartDate, format="%m/%d/%Y")
-  param.dat = subset(param.dat, !is.na(as.numeric(param.dat$ResultMeasureValue)))
+  param.dat$ResultMeasureValue = suppressWarnings(as.numeric(as.character(param.dat$ResultMeasureValue)))
+  param.dat = subset(param.dat, !is.na(param.dat$ResultMeasureValue))
   end = dim(param.dat)[1]
 
   if(!(start==end)){
