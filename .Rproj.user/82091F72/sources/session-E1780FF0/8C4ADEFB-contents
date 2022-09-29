@@ -31,8 +31,10 @@ ui <- fluidPage(
   fluidRow(column(3, uiOutput("calcs")),
            column(3, uiOutput("calcs_dwn"))),
   br(),
-  tabsetPanel(
+  tabsetPanel(id="tabs",
     tabPanel("Summary Table",
+             br(),
+             p("Click the check boxes for the sites you'd like displayed in the table. Then click Create Table. A download button will appear above the table, which will save an Excel spreadsheet to your computer."),
              br(),
              sidebarPanel(fluidRow(column(12,uiOutput("summ_sites"))),
                           fluidRow(column(4, uiOutput("summ_go")))),
@@ -42,18 +44,19 @@ ui <- fluidPage(
              br(),
              fluidRow(column(12, uiOutput("conc_sites"))),
              fluidRow(column(4, uiOutput("conc_go"))),
-             fluidRow(column(6, uiOutput("conc_sel"))),
-             fluidRow(column(4, uiOutput("conc_agg"))),
+             br(),
+             fluidRow(column(4, uiOutput("conc_sel")),
+                      column(4, uiOutput("conc_agg"))),
              br(),
              fluidRow(column(4, uiOutput("conc_dwn"))),
-             fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "800px")))),
+             fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "600px")))),
     tabPanel("Loading Plots",
              br(),
              sidebarPanel(fluidRow(column(12, uiOutput("load_site"))),
                           fluidRow(column(12, uiOutput("load_sel"))),
                           fluidRow(column(12, uiOutput("load_agg")))),
              mainPanel(fluidRow(column(4, uiOutput(("load_dwn")))),
-                       fluidRow(column(12, plotOutput("load_plot",width="100%", height = "800px"))))),
+                       fluidRow(column(12, plotOutput("load_plot",width="100%", height = "400px"))))),
     tabPanel("Flow Plots",
              br(),
              )
@@ -77,6 +80,17 @@ server <- function(input, output) {
       write.csv(template, file, row.names = FALSE)
     }
   )
+
+  # Hide tabs until worksheet uploaded
+  observe({
+    if(is.null(reactives$calcdat)){
+      hideTab(inputId="tabs",target="Summary Table")
+      hideTab(inputId="tabs",target="Concentration Plots")
+      hideTab(inputId="tabs",target="Loading Plots")
+      hideTab(inputId="tabs",target="Flow Plots")
+    }
+  })
+
   # Upload dataset
   observeEvent(input$uplode,{
     file=input$uplode$datapath
@@ -116,7 +130,10 @@ server <- function(input, output) {
     calcdat_out$Loading_Unit = input$loadunit
     reactives$calcdat_out = calcdat_out
     if("Observed_Loading"%in%names(calcdat)){
-      reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))
+      perc = unique(calcdat$Flow_Percentile)
+      if(length(perc)==1&is.na(perc)){
+        showModal(modalDialog(title="Warning","This dataset contains flow data that is not associated with a monitoring location that has pollutant data. Loadings will not be calculated."))
+      }else{reactives$loading = subset(calcdat, !is.na(calcdat$Flow_Percentile))}
     }
     # summary values for all data
     dat_agg = calcdat%>%dplyr::group_by(MonitoringLocationIdentifier, CharacteristicName,ResultMeasure.MeasureUnitCode)%>%dplyr::summarise(Date_Range = paste0(min(Date)," to ",max(Date)),Sample_Size=length(DailyResultMeasureValue),Minimum_Concentration = min(DailyResultMeasureValue),Arithmetic_Mean_Concentration=mean(DailyResultMeasureValue),Maximum_Concentration = max(DailyResultMeasureValue), Percent_Exceeding_Criterion = sum(Exceeds)/length(Exceeds)*100)
@@ -137,6 +154,7 @@ server <- function(input, output) {
     reactives$summ <- dat_agg
     })
 
+  # Download data from tmdl calcs function.
   output$calcs_dwn <- renderUI({
     req(reactives$calcdat)
     downloadButton("calcs_dwn1","Download Calculation Spreadsheet")
@@ -148,6 +166,18 @@ server <- function(input, output) {
   },
   content = function(file) {
     write.csv(reactives$calcdat_out, file, row.names = FALSE)
+  })
+
+  # Show tabs after worksheet uploaded based on data provided.
+  observe({
+    if(!is.null(reactives$calcdat)){
+      showTab(inputId="tabs",target="Summary Table")
+      showTab(inputId="tabs",target="Concentration Plots")
+    }
+    if(!is.null(reactives$loading)){
+      showTab(inputId="tabs",target="Loading Plots")
+      showTab(inputId="tabs",target="Flow Plots")
+    }
   })
 
   # Makes site list appear when loading and summary calcs finish
@@ -195,7 +225,7 @@ server <- function(input, output) {
     req(reactives$summ)
     sites = unique(reactives$calcdat$MonitoringLocationIdentifier)
     sites = sites[order(sites)]
-    bucket_list(header="Drag sites to right column in the order you'd like displayed in the plot",
+    bucket_list(header="Drag sites to right column in the order you'd like displayed in the plot. Top to bottom will become left to right in downstream-upstream plot.",
                 group_name = "conc_group",
                 orientation = "horizontal",
                 add_rank_list(text = "Drag from here",
@@ -224,14 +254,16 @@ server <- function(input, output) {
   # Radio button to select plot to make
   output$conc_sel <- renderUI({
     req(reactives$conc)
-    radioButtons("conc_sel","Select plot type (note that these plots use all uploaded data)",choices = c("Dot Plot","Monthly Means","Timeseries"))
+    radioButtons("conc_sel","Select plot type",choices = c("Dot Plot","Monthly Means","Timeseries"))
   })
 
   # Upstream-downstream aggregating function
   output$conc_agg <- renderUI({
-    req(reactives$conc)
-    radioButtons("conc_agg", label="Choose site-level aggregating function (doesn't matter for timeseries)",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"))
-  })
+    req(input$conc_sel)
+    if(input$conc_sel%in%c("Dot Plot","Monthly Means")){
+      radioButtons("conc_agg", label="Choose site-level aggregating function (doesn't matter for timeseries)",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"))
+    }
+      })
 
   concplot <- reactive({
     req(input$conc_agg)
