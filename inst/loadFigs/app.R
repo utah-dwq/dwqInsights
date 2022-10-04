@@ -8,6 +8,8 @@ library(ggplot2)
 library(sortable)
 library(RColorBrewer)
 
+source("tmdlCalcs.R")
+
 template = data.frame("MonitoringLocationIdentifier"=c("MLID_1234"),
                       "ActivityStartDate"=c("01/01/2022"),"CharacteristicName"=c("Pollutant_A"),"ResultMeasureValue"=c(50),"ResultMeasure.MeasureUnitCode"=c("mg/L"),"BeneficialUse"=c("2A"),"NumericCriterion"=c(25),"OtherColumnsOK"=c("NOTE: Make sure your dates are in the mm/dd/yyyy format and all of your ResultMeasureValue and Numeric Criterion values are numeric."))
 colorz = c("#034963","#0b86a3","#00a1c6","#cde3e2", "#BFD7B5","#D1CAA1","#D1D2F9","#77625C","#EFA9AE")
@@ -133,7 +135,7 @@ server <- function(input, output) {
   })
   # Runs TMDL calc function when button is pressed
   observeEvent(input$calcs,{
-    calcdat = dwqInsights::tmdlCalcs(idata=reactives$dat, aggFun=input$aggfun, cf = input$cf, mos = input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
+    calcdat = tmdlCalcs(idata=reactives$dat, aggFun=input$aggfun, cf = input$cf, mos = input$mos, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE)
     reactives$calcdat = calcdat
     calcdat_out = calcdat
     calcdat_out$Margin_of_Safety = input$mos
