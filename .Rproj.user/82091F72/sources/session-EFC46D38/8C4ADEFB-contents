@@ -383,7 +383,7 @@ server <- function(input, output) {
         regime[Flow_Percentile>89&Flow_Percentile<101] = "Low \nFlows"
       })
 
-      exceed = exceed%>%group_by(MonitoringLocationIdentifier, regime)%>%summarise(perc_exceed=round(length(Exceeds[Exceeds==1])/length(Exceeds)*100,digits=0))
+      exceed = exceed%>%group_by(MonitoringLocationIdentifier, regime)%>%dplyr::summarise(perc_exceed=round(length(Exceeds[Exceeds==1])/length(Exceeds)*100,digits=0))
 
       exceed = within(exceed,{
         place = NA

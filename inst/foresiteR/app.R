@@ -232,7 +232,7 @@ server <- function(input, output) {
         dat = reactive_objects$data
         p_data = subset(dat, dat$CharacteristicName==input$param&dat$ResultSampleFractionText==input$fraction&dat$ResultMeasure.MeasureUnitCode==input$unit)
         reactive_objects$p_data = p_data
-        site_ncount = p_data%>%group_by(MonitoringLocationIdentifier)%>%summarise(ncount = length(unique(ActivityStartDate)))
+        site_ncount = p_data%>%dplyr::group_by(MonitoringLocationIdentifier)%>%dplyr::summarise(ncount = length(unique(ActivityStartDate)))
         site_ncount$radius = scales::rescale(site_ncount$ncount,to=c(5,20))
         sites = reactive_objects$sites
         sites$mapcolor[!sites$MonitoringLocationIdentifier%in%unique(p_data$MonitoringLocationIdentifier)]="#646464"

@@ -1,0 +1,11 @@
+name: loadfigs
+title:
+username:
+account: ehinman
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7211544
+bundleId: 6369537
+url: https://ehinman.shinyapps.io/loadfigs/
+when: 1664925191.56595
+lastSyncTime: 1664925191.56695
