@@ -21,7 +21,7 @@ ui <- fluidPage(
   titlePanel("loadFigs: Build Pretty Pollutant Loading Figures"),
   fluidRow(column(4, fileInput("uplode","Upload data",accept=".csv")),
            column(2, downloadButton("template","Download template"), offset=6)),
-  fluidRow(column(3,radioButtons("aggfun", "Daily aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="Arithmetic mean")),
+  fluidRow(column(3,radioButtons("aggfun", "Daily aggregating function",choiceValues=c("mean","gmean"),choiceNames=c("Arithmetic mean", "Geometric mean"), selected="mean")),
            bsTooltip("aggfun",title="The geometric mean is typically used to aggregate E. coli to a daily mean, while the standard arithmetic mean is used for all other pollutants."),
            column(3, numericInput("mos","Margin of safety", value=0, min=0, max=1)),
            bsTooltip("mos",title="This field adds an explicit margin of safety to the TMDL calculation and is expressed as a proportion. For example, a value of 0.1 (10% margin of safety) is subtracted from 1 and then multiplied by the numeric criterion and correction factor to obtain the TMDL less a margin of safety. In this example, the calculated TMDL is 90% of the TMDL calculation without a margin of safety (or a proportion of 0)."),
@@ -54,7 +54,7 @@ ui <- fluidPage(
              fluidRow(column(12, plotOutput("conc_plot", width="100%", height = "600px")))),
     tabPanel("Loading Plots",
              br(),
-             p("The load duration curve plot shows how observed loading and TMDL loading change with flow regime/flow percentile. The monthly loading bar plot shows how the mean observed loading compares to TMDL loading by month."),
+             p("The load duration curve plot shows how observed loading and TMDL loading change with flow regime/flow percentile. Please note that all flow values collected at this site are used to create the TMDL curve. However, the percent exceedance value in parentheses only shows the percentage of observed loading values that exceed the TMDL given the total number of observed loading values. The monthly loading bar plot shows how the mean observed loading compares to TMDL loading by month. In all cases, the TMDL represents the TMDL less the margin of safety, entered above."),
              br(),
              sidebarPanel(fluidRow(column(12, uiOutput("load_site"))),
                           fluidRow(column(12, uiOutput("load_sel"))),
@@ -336,7 +336,8 @@ server <- function(input, output) {
   # Loading plots
   output$load_site <- renderUI({
     req(reactives$loading)
-    selectInput("load_site","Select Site", choices=unique(reactives$loading$MonitoringLocationIdentifier))
+    sites = unique(subset(reactives$loading, !is.na(reactives$loading$Observed_Loading))$MonitoringLocationIdentifier)
+    selectInput("load_site","Select Site", choices=sites)
   })
 
   output$load_sel <- renderUI({

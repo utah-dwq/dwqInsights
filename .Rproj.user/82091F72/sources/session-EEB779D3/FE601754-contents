@@ -85,11 +85,11 @@ tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_
 
   if("Flow"%in%unique(tbl$CharacteristicName)){
     flow.agg = subset(param.dat, param.dat$CharacteristicName%in%c("Flow"))
-    flow.agg = aggregate(ResultMeasureValue~MonitoringLocationIdentifier+Date+ResultMeasure.MeasureUnitCode, data=flow.agg, FUN="mean")
+    flow.agg = aggregate(ResultMeasureValue~MonitoringLocationIdentifier+Date+ResultMeasure.MeasureUnitCode+BeneficialUse+NumericCriterion+CharacteristicName+ResultMeasure.MeasureUnitCode, data=flow.agg, FUN="mean")
     names(flow.agg)[names(flow.agg)=="ResultMeasureValue"] = "DailyFlowValue"
     names(flow.agg)[names(flow.agg)=="ResultMeasure.MeasureUnitCode"] = "FlowUnit"
-    flow.agg$Flow_Percentile = flow_perc(flow.agg$DailyFlowValue)
-    param.agg.dv = merge(param.agg.dv, flow.agg, all.x = TRUE)
+    flow.agg = flow.agg%>%dplyr::group_by(MonitoringLocationIdentifier)%>%mutate(Flow_Percentile = flow_perc(DailyFlowValue))
+    param.agg.dv = merge(param.agg.dv, flow.agg, all = TRUE)
     param.agg.dv$Observed_Loading = param.agg.dv$DailyResultMeasureValue*cf*param.agg.dv$DailyFlowValue
     param.agg.dv$TMDL = as.numeric(param.agg.dv$NumericCriterion)*cf*param.agg.dv$DailyFlowValue*(1-mos)
   }
