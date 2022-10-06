@@ -41,7 +41,7 @@ The foresiteR app queries water quality data from [EPA's Water Quality Portal](h
 
 **NOTE:** Impaired site locations come from IR results across documented cycles. Some impaired sites belong to DOGM and potentially other entities that do not submit data to EPA's Water Quality Portal. Therefore, data from these sites likely are not in the Portal and will not display on the map/plots in the app. You will need to review previous IR data files to find the data leading to impairments. 
 
-![dwqInsights screenshot](imgs/dwqInsightsgrab.png "dwqInsights screenshot")
+![](imgs/dwqInsightsgrab.png "dwqInsights screenshot")
 To launch the app, use the code below:
 ```{r, eval=F}
 dwqInsights::foresiteR()
@@ -51,8 +51,51 @@ A new window opens and displays a map of Utah with the Watershed Management Unit
 
 The app queries the latest data from EPA's Water Quality Portal for all sites in the assessment unit, and a new map appears in the lower part of the window showing the sites and their relative data richness (larger circles means more data). Impaired sites are also shown in red. On the right side of the screen, the drop down menus allow the user to pick parameters of interest to plot. Note that different organizations or even visits may be recorded with different units or fractions. Once the data appear on the plot, the user may choose to download the data for other uses by clicking the button "Download data" below the plot.
 
-### tmdlCalcs
+### loadFigs
 
-In progress...
+The loadFigs app displays tables, concentration plots, and load duration curves for a user-supplied dataset. Its intended use is for TMDL development and publication-quality figure production. 
 
+To launch the app from the dwqInsights package, use the code below.
+```{r, eval=F}
+dwqInsights::loadFigs()
+```
 
+However, there is also an online version of the tool, found [here](https://ehinman.shinyapps.io/loadFigs/)
+
+![](imgs/loadFigs_open.png "Opening menu view.")
+
+The opening window has an upload data button to the left, where you can navigate to your pollutant/flow file and upload it to the system. However, if you are unsure of the data template needed to use the app, click the "Download template" button to the right. It shows all of the required column names and the format of the data required in each column. 
+
+**Numeric Criterion Note:** The beneficial use and numeric criterion need to be supplied for ALL data in the dataset. This is because the numeric criterion is used to calculate the TMDL loading given the flow value, margin of safety, and correction factor. In some cases, flow might be provided without an accompanying pollutant concentration. These flow values are used to create the most complete load duration curve using the data provided. 
+
+**Unit Consistency Note:** Please ensure all units are consistent for the pollutant and flow data within the uploaded datasets. For example, all E. coli data are expressed as a concentration of MPN/100 mL and all flow data are expressed in cubic feet per second (cfs). 
+
+**Non-Detects Note:** All non-detect (and over-detect) values must be handled in a consistent manner prior to using the tool. Recall that taking a geometric mean on a dataset that contains zero values will make the entire geometric mean calculation zero. The Integrated Report generally uses half of the lower detection limit to define non-detects. 
+
+After uploading your dataset, you must choose whether you want multiple pollutant values collected on the same day aggregated to a daily arithmetic mean or a geometric mean. If there are flow data within your dataset associated with a site that also has pollutant data, you will need to fill out the margin of safety, loading correction factor, and loading units boxes to match your pollutant and flow units. Hover over the different widgets to learn more about what they mean and how to use them. 
+
+When you've specified all of the input conditions, click "Run summary and loading calculations" to create the dataset needed to build summary tables, concentration plots, and loading plots. You can download the resultant table in an Excel sheet by clicking the "Download Calculation Spreadsheet" button. Tabs will appear below the input section to build these outputs.
+
+#### Summary Table
+
+The summary table shows the date range, sample size, as well as the max, min, and mean pollutant concentration for each site. If your input values specified the geometric mean as the aggregating function, the table will also show the geometric mean value over the entire site dataset. You can download the summary to an Excel sheet using the button above the table.
+
+![](imgs/loadFigs_table.png "Summary table view.")
+
+#### Concentration Plots
+
+On the concentration plots tab, you must drag the site ID's in the dataset to the desired order in which they will appear on the dot plot and timeseries plots. Note that the maximum number of sites you may plot at a time is 8. This limit ensures the plots are at a sufficient resolution when the image is downloaded. When you've finished dragging and ordering your sites, click "Confirm site list and order" to start generating plots. You have three different plot options. The dot plot and monthly means plot show overall means for each site or site/month. The overall means may be calculated as geometric or arithmetic means using the radio buttons in the center of the page. You may add an additional horizontal line, denoting a second standard, using the field on the right of the page. Download the plot(s) for use in other publications using the "Download plot" button. **NOTE:** Do not change the filename before saving. This will cause the file to be saved in a blank format and no image will be generated. 
+
+![](imgs/loadFigs_conc.png "Concentration plot timeseries view.")
+
+#### Loading Plots
+
+The loading tab will appear if flow data exist in the dataset. This is because the flow data are used to calculate the TMDL loading, which can then be plotted in a load duration curve and monthly barplot. Observed loadings will also appear on the plot if your dataset has paired pollutant-flow data on the same day. For the monthly barplots, you may choose between an arithmetic mean and a geometric mean, applied to both the TMDL and Observed Loading bars. Unlike the load duration curve, which plots ALL flow percentiles in the dataset, the monthly barplot only considers days where both flow and a pollutant concentration were collected. This is because pollutant sampling does not always occur across the entire flow regime, and it may not be representative to compare monthly means of observed loadings restricted to one end of the entire flow regime to monthly means of TMDL loadings calculated across the entire flow regime.
+
+![](imgs/loadFigs_ldc.png "Load duration curve view.")
+
+#### Flow Plots
+
+Finally, the Flow Plots tab appears when flow data are in the uploaded dataset, and it allows the user to view and download flow timeseries and a barplot of average flows by month. 
+
+![](imgs/loadFigs_flow.png "Flow timeseries view.")
