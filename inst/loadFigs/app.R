@@ -234,7 +234,8 @@ server <- function(input, output) {
   # Makes site list appear when loading and summary calcs finish
   output$conc_sites <- renderUI({
     req(reactives$summ)
-    sites = unique(reactives$calcdat$MonitoringLocationIdentifier)
+    pollsites = subset(reactives$calcdat, !is.na(reactives$calcdat$CharacteristicName))
+    sites = unique(pollsites$MonitoringLocationIdentifier)
     sites = sites[order(sites)]
     bucket_list(header="Drag sites to right column in the order you'd like displayed in the plot. Top to bottom will become left to right in downstream-upstream plot.",
                 group_name = "conc_group",
