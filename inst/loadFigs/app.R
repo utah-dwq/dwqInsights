@@ -374,6 +374,7 @@ server <- function(input, output) {
     loading = reactives$loading
     loading = subset(loading, loading$MonitoringLocationIdentifier%in%c(input$load_site))
     if(input$load_sel=="Load Duration Curve"){
+      flow_rej = data.frame(regime=c("High \nFlows","Moist \nConditions","Mid-Range \nFlows","Dry \nConditions","Low \nFlows"),place=c(5,25,50,75,95))
       loading = loading[order(loading$Flow_Percentile),]
       exceed = subset(loading, !is.na(loading$Observed_Loading))
       exceed = within(exceed,{
@@ -386,15 +387,8 @@ server <- function(input, output) {
       })
 
       exceed = exceed%>%group_by(MonitoringLocationIdentifier, regime)%>%dplyr::summarise(perc_exceed=round(length(Exceeds[Exceeds==1])/length(Exceeds)*100,digits=0))
-
-      exceed = within(exceed,{
-        place = NA
-        place[regime=="High \nFlows"] =5
-        place[regime=="Moist \nConditions"] = 25
-        place[regime=="Mid-Range \nFlows"]=50
-        place[regime=="Dry \nConditions"] = 75
-        place[regime=="Low \nFlows"] = 95
-      })
+      exceed = merge(exceed, flow_rej, all = TRUE)
+      exceed$perc_exceed[is.na(exceed$perc_exceed)] = 0
       exceed$label = paste0(exceed$regime,"\n(",exceed$perc_exceed,"%)")
       why = max(c(loading$TMDL,loading$Observed_Loading), na.rm = TRUE)*0.8
       g = ggplot(loading, aes(x=Flow_Percentile))+geom_blank()+geom_vline(xintercept=c(10,40,60,90),linetype=2)+geom_line(aes(y=TMDL, color="TMDL"),color="#034963",size=1.5)+geom_point(aes(y=Observed_Loading, color="Observed_Loading"),shape=21, color="#464646",fill="#00a1c6",size=3)+theme_classic()+labs(x="Flow Percentile",y=input$loadunit)+annotate("text",x=exceed$place,y=why, label=exceed$label)+scale_color_manual(name = "",values = c( "TMDL" = "#034963", "Observed_Loading" = "#00a1c6"),labels = c("TMDL", "Observed Loading"))
