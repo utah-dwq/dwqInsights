@@ -385,7 +385,6 @@ server <- function(input, output) {
         regime[Flow_Percentile>59&Flow_Percentile<90] = "Dry \nConditions"
         regime[Flow_Percentile>89&Flow_Percentile<101] = "Low \nFlows"
       })
-
       exceed = exceed%>%group_by(MonitoringLocationIdentifier, regime)%>%dplyr::summarise(perc_exceed=round(length(Exceeds[Exceeds==1])/length(Exceeds)*100,digits=0))
       exceed = merge(exceed, flow_rej, all = TRUE)
       exceed$perc_exceed[is.na(exceed$perc_exceed)] = 0
@@ -394,7 +393,8 @@ server <- function(input, output) {
       g = ggplot(loading, aes(x=Flow_Percentile))+geom_blank()+geom_vline(xintercept=c(10,40,60,90),linetype=2)+geom_line(aes(y=TMDL, color="TMDL"),color="#034963",size=1.5)+geom_point(aes(y=Observed_Loading, color="Observed_Loading"),shape=21, color="#464646",fill="#00a1c6",size=3)+theme_classic()+labs(x="Flow Percentile",y=input$loadunit)+annotate("text",x=exceed$place,y=why, label=exceed$label)+scale_color_manual(name = "",values = c( "TMDL" = "#034963", "Observed_Loading" = "#00a1c6"),labels = c("TMDL", "Observed Loading"))
      }
     if(input$load_sel=="Monthly Loading Bar Plot"){
-      ldc_month = loading%>%dplyr::select(Date,MonitoringLocationIdentifier,TMDL,Observed_Loading)%>%tidyr::pivot_longer(cols=c(TMDL,Observed_Loading),names_to="Type",values_to="Loading",values_drop_na=TRUE)
+      loading1 = subset(loading, !is.na(loading$Observed_Loading))
+      ldc_month = loading1%>%dplyr::select(Date,MonitoringLocationIdentifier,TMDL,Observed_Loading)%>%tidyr::pivot_longer(cols=c(TMDL,Observed_Loading),names_to="Type",values_to="Loading",values_drop_na=TRUE)
       ldc_month$month = lubridate::month(ldc_month$Date, label=TRUE, abbr=TRUE)
       if(input$load_agg=="mean"){
         ldc_month1 = ldc_month%>%dplyr::group_by(MonitoringLocationIdentifier,Type,month)%>%dplyr::summarise(mean_Load = mean(Loading))
