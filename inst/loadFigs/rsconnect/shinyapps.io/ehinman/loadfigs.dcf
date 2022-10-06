@@ -5,9 +5,9 @@ account: ehinman
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 7219495
-bundleId: 6372210
+bundleId: 6376357
 url: https://ehinman.shinyapps.io/loadFigs/
-when: 1664984595.34682
-lastSyncTime: 1664984595.34682
+when: 1665071680.33976
+lastSyncTime: 1665071680.33976
 asMultiple: FALSE
 asStatic: FALSE
