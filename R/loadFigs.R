@@ -13,6 +13,7 @@
 #' @import sortable
 #' @import RColorBrewer
 #' @importFrom magrittr %>%
+#' @importFrom dwqInsights tmdlCalcs
 
 #' @export
 loadFigs = function(){
