@@ -1,7 +1,0 @@
-"0","dat = output"
-"0","dat$month = lubridate::month(dat$Date, label=TRUE)"
-"0","dat = dat[order(dat$month),]"
-"0","dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)"
-"0",""
-"0","g = ggplot(dat, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill=""#D3D3D3"")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color=""#646464"", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales=""free"", ncol=1)+theme_classic()+labs(x=""Month"", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color=""#cb181d"",size=0.5)+theme(legend.position = ""none"")+scale_fill_manual(values=colorsy)+stat_summary(fun=gmean, geom=""point"", fill=""#FFB800"",color=""black"", size=3, shape=23)"
-"0","g"

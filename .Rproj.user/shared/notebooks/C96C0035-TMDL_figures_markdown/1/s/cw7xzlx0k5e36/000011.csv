@@ -1,6 +1,0 @@
-"0","dat = output"
-"0","dat = dat[order(dat$Date),]"
-"0","dat$MonitoringLocationIdentifier = factor(as.character(dat$MonitoringLocationIdentifier), levels = sites)"
-"0",""
-"0","t = ggplot(dat, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(dat$Date), max(dat$Date)))+geom_point(shape=21,color=""#646464"", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales=""free"", ncol=1)+theme_classic()+labs(x=""Date"", y=unique(dat$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(dat$NumericCriterion), color=""#cb181d"",size=0.5)+theme(legend.position = ""none"")+scale_fill_manual(values=colorsy)"
-"0","t"
