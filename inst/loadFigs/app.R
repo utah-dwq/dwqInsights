@@ -285,25 +285,39 @@ server <- function(input, output) {
   concplot <- reactive({
     req(input$conc_agg)
     conc = reactives$conc
+    conc = subset(conc, !is.na(conc$DailyResultMeasureValue))
     conc$month = lubridate::month(conc$Date, label=TRUE)
     conc = conc[order(conc$Date),]
     conc$MonitoringLocationIdentifier = factor(as.character(conc$MonitoringLocationIdentifier), levels = input$conc_list_2)
+    conc <<- conc
+    num_crit = unique(conc$NumericCriterion[!is.na(conc$NumericCriterion)])
     if(input$conc_agg=="gmean"){func=gmean}else{func="mean"}
     if(input$conc_sel=="Dot Plot"){
       reactives$width=7
       reactives$height=7
-      g = ggplot(data=conc, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values=colorz)+theme_classic()+labs(x="Monitoring Location ID", y=unique(conc$ResultMeasure.MeasureUnitCode))+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
-    }
+      if(length(num_crit)>1){
+        g = ggplot(data=conc, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values=colorz)+theme_classic()+labs(x="Monitoring Location ID", y=unique(conc$ResultMeasure.MeasureUnitCode))+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
+      }else{g = ggplot(data=conc, aes(x=MonitoringLocationIdentifier,y=DailyResultMeasureValue))+geom_jitter(aes(fill=factor(MonitoringLocationIdentifier)), position=position_jitter(0.1), shape=21, size=2, color="#646464")+scale_fill_manual(values=colorz)+theme_classic()+labs(x="Monitoring Location ID", y=unique(conc$ResultMeasure.MeasureUnitCode))+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=2.5, shape=23)+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none", axis.text.x=element_text(angle=45, hjust=1)) # NOTE, should adjust numeric criterion line to accommodate variable criteria (e.g. hardness-dependent)
+            }
+          }
     if(input$conc_sel=="Timeseries"){
       reactives$width=8
       reactives$height=10
-      g = ggplot(conc, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(conc$Date), max(conc$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)
-    }
+      if(length(num_crit)>1){
+        g = ggplot(conc, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(conc$Date), max(conc$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_line(aes(y=NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)
+      }else{
+        g = ggplot(conc, aes(Date,DailyResultMeasureValue, fill=as.factor(MonitoringLocationIdentifier)))+scale_x_date(limits=c(min(conc$Date), max(conc$Date)))+geom_point(shape=21,color="#646464", size=2)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Date", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)
+      }
+      }
     if(input$conc_sel=="Monthly Means"){
       reactives$width=8
       reactives$height=10
       conc = conc[order(conc$month),]
-      g = ggplot(conc, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+      if(length(num_crit)>1){
+        g = ggplot(conc, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(conc$ResultMeasure.MeasureUnitCode))+theme(legend.position = "none")+scale_fill_manual(values=colorz)+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+      }else{
+        g = ggplot(conc, aes(month, DailyResultMeasureValue, fill=factor(MonitoringLocationIdentifier)))+geom_blank()+geom_rect(aes(xmin=4.5,ymin=0,xmax=10.5,ymax=max(DailyResultMeasureValue)), fill="#D3D3D3")+scale_x_discrete(limits=month.abb)+geom_jitter(position=position_jitter(0), size=3, shape=21, color="#646464", alpha=0.65)+facet_wrap(vars(MonitoringLocationIdentifier), scales="free", ncol=1)+theme_classic()+labs(x="Month", y=unique(conc$ResultMeasure.MeasureUnitCode))+geom_hline(yintercept=unique(conc$NumericCriterion), color="#cb181d",size=0.5)+theme(legend.position = "none")+scale_fill_manual(values=colorz)+stat_summary(fun=func, geom="point", fill="#FFB800",color="black", size=3, shape=23)
+      }
     }
     if(input$conc_std>0){
       g = g+geom_hline(yintercept=unique(input$conc_std), color="#ff781f",size=0.5)
