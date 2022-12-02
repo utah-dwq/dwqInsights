@@ -15,7 +15,7 @@ This is a user guide for the dwqInsights package, developed for the [Utah Divisi
 
 ## Downloading dwqInsights
 
-dwqInsights is stored and updated on [Github](https://github.com/edhinman/dwqInsights). It is recommended that you have the latest version of [R](https://cloud.r-project.org/) and [RStudio](https://www.rstudio.com/products/rstudio/download/) before downloading the dwqInsights package. To download packages from GitHub, you need the **devtools** package. If the following command leads to an error...
+dwqInsights is stored and updated on [Github](https://github.com/utah-dwq/dwqInsights). It is recommended that you have the latest version of [R](https://cloud.r-project.org/) and [RStudio](https://www.rstudio.com/products/rstudio/download/) before downloading the dwqInsights package. To download packages from GitHub, you need the **devtools** package. If the following command leads to an error...
 ```{r, eval=F}
 library(devtools)
 ```
