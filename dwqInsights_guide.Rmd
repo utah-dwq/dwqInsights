@@ -28,7 +28,7 @@ Once devtools is downloaded, dwqInsights requires the wqTools package, which als
 
 ```{r, eval=F}
 devtools::install_github("utah-dwq/wqTools")
-devtools::install_github("edhinman/dwqInsights")
+devtools::install_github("utah-dwq/dwqInsights")
 ```
 
 ## dwqInsights apps and functions
