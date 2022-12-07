@@ -1,7 +1,7 @@
 ---
 title: "dwqInsights Guide"
 author: "Elise Hinman"
-date: '2022-06-23'
+date: '2022-12-02'
 output: html_document
 ---
 

@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyjs)
+library(shinyBS)
 library(wqTools)
 library(leaflet)
 library(leaflet.extras)
@@ -32,6 +33,7 @@ ui <- fluidPage(
                                column(4,uiOutput("fraction")),
                                column(4, uiOutput("unit"))),
                     fluidRow(column(2, uiOutput("submit"))),
+                    bsTooltip("submit",title="All non-detects and over-detects in the plot data will appear at their detection limit if it was reported in the dataset."),
                     fluidRow(plotlyOutput("timeseries")),
                     fluidRow(column(2,uiOutput("getData"))),
                     br()))
@@ -171,14 +173,16 @@ server <- function(input, output) {
         sites = wqTools::assignAUs(sites, lat = "LatitudeMeasure",long="LongitudeMeasure")
         sites = subset(sites, sites$ASSESS_ID%in%auid)
         sites = wqTools::assignUses(sites, lat = "LatitudeMeasure",long="LongitudeMeasure")
-        data = wqTools::readWQP(type="narrowresult", siteid = c(sites$MonitoringLocationIdentifier), start_date = mindate, end_date = maxdate)
-        data$ResultSampleFractionText[is.na(data$ResultSampleFractionText)]="NA"
-        data$ResultMeasure.MeasureUnitCode[is.na(data$ResultMeasure.MeasureUnitCode)]="NA"
+        dat = wqTools::readWQP(type="result", siteid = c(sites$MonitoringLocationIdentifier), start_date = mindate, end_date = maxdate)
+        dat$ResultSampleFractionText[is.na(dat$ResultSampleFractionText)]="NA"
+        dat$ResultMeasureValue_plot = ifelse(!is.na(dat$ResultDetectionConditionText)&is.na(dat$ResultMeasureValue),dat$DetectionQuantitationLimitMeasure.MeasureValue, dat$ResultMeasureValue)
+        dat$ResultMeasure.MeasureUnitCode_plot = ifelse(!is.na(dat$ResultDetectionConditionText)&is.na(dat$ResultMeasure.MeasureUnitCode),dat$DetectionQuantitationLimitMeasure.MeasureUnitCode, dat$ResultMeasure.MeasureUnitCode)
+        dat$ResultMeasure.MeasureUnitCode_plot[is.na(dat$ResultMeasure.MeasureUnitCode_plot)]="NA"
         site_colorz = data.frame(MonitoringLocationIdentifier=unique(sort(sites$MonitoringLocationIdentifier)), mapcolor = colorRampPalette(brewer.pal(7,"Set2"))(length(unique(sites$MonitoringLocationIdentifier))))
-        data = merge(data, site_colorz, all.x = TRUE)
+        dat = merge(dat, site_colorz, all.x = TRUE)
         sites = merge(sites, site_colorz, all.x = TRUE)
         reactive_objects$sites = sites
-        reactive_objects$data = data
+        reactive_objects$data = dat
         ns_sites_au = subset(ns_sites_paramwide, ns_sites_paramwide$ASSESSMENT_UNIT_ID==auid)
         view=sf::st_bbox(focal_au)
         mappino%>%
@@ -219,8 +223,8 @@ server <- function(input, output) {
     output$unit <- renderUI({
         req(input$fraction)
         if(input$fraction=="NA"){
-            units = unique(subset(reactive_objects$data,reactive_objects$data$CharacteristicName==input$param)$ResultMeasure.MeasureUnitCode)
-        }else{units = unique(subset(reactive_objects$data,reactive_objects$data$CharacteristicName==input$param&reactive_objects$data$ResultSampleFractionText==input$fraction)$ResultMeasure.MeasureUnitCode)}
+            units = unique(subset(reactive_objects$data,reactive_objects$data$CharacteristicName==input$param)$ResultMeasure.MeasureUnitCode_plot)
+        }else{units = unique(subset(reactive_objects$data,reactive_objects$data$CharacteristicName==input$param&reactive_objects$data$ResultSampleFractionText==input$fraction)$ResultMeasure.MeasureUnitCode_plot)}
         selectInput("unit",label="Units", choices = units)
     })
     output$submit <- renderUI({
@@ -230,7 +234,7 @@ server <- function(input, output) {
 
     observeEvent(input$submit,{
         dat = reactive_objects$data
-        p_data = subset(dat, dat$CharacteristicName==input$param&dat$ResultSampleFractionText==input$fraction&dat$ResultMeasure.MeasureUnitCode==input$unit)
+        p_data = subset(dat, dat$CharacteristicName==input$param&dat$ResultSampleFractionText==input$fraction&dat$ResultMeasure.MeasureUnitCode_plot==input$unit)
         reactive_objects$p_data = p_data
         site_ncount = p_data%>%dplyr::group_by(MonitoringLocationIdentifier)%>%dplyr::summarise(ncount = length(unique(ActivityStartDate)))
         site_ncount$radius = scales::rescale(site_ncount$ncount,to=c(5,20))
@@ -256,8 +260,8 @@ server <- function(input, output) {
     output$timeseries <- renderPlotly({
         req(reactive_objects$p_data)
         dat = reactive_objects$p_data
-        dat$ResultMeasureValue = as.numeric(dat$ResultMeasureValue)
-        dat = subset(dat, !is.na(dat$ResultMeasureValue))
+        dat$ResultMeasureValue_plot = as.numeric(dat$ResultMeasureValue_plot)
+        dat = subset(dat, !is.na(dat$ResultMeasureValue_plot))
         dat = dat[order(dat$ActivityStartDate),]
         sites = unique(dat$MonitoringLocationIdentifier)
         # fig <- plot_ly(data=dat, x=~ActivityStartDate, y=~ResultMeasureValue, color=~MonitoringLocationIdentifier, line=list(color=dat$mapcolor))%>%
@@ -266,10 +270,10 @@ server <- function(input, output) {
         for(i in 1:length(sites)){
             d = subset(dat, dat$MonitoringLocationIdentifier==sites[i])
             fig <- fig%>%
-                add_trace(data = d, x=~ActivityStartDate, y=~ResultMeasureValue, color=~MonitoringLocationIdentifier,line=list(color=unique(d$mapcolor)), marker=list(color=unique(d$mapcolor)), mode="lines+markers")
+                add_trace(data = d, x=~ActivityStartDate, y=~ResultMeasureValue_plot, color=~MonitoringLocationIdentifier,line=list(color=unique(d$mapcolor)), marker=list(color=unique(d$mapcolor)), mode="lines+markers")
         }
         fig <- fig%>%
-            layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode)))
+            layout(title=unique(dat$CharacteristicName),font=list(family="Arial"),xaxis=list(title="Date"),yaxis=list(title=unique(dat$ResultMeasure.MeasureUnitCode_plot)))
 
     })
 
