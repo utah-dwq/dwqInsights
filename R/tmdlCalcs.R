@@ -14,7 +14,14 @@
 #' @import plyr
 #' @import dplyr
 
-# test = tmdlCalcs(wb_path = wb_path, aggFun = "gmean", cf=24465715, mos=0, exportfromfunc = TRUE)
+#Test Data
+# idata = read.csv("/Users/alanochoa/Downloads/Rose Creek 1 - E.coli.csv")
+# aggFun = "gmean"
+# cf=24465715
+# mos=0
+# exportfromfunc = TRUE
+# rec_ssn=c(121,304)
+# irg_ssn=c(135,288)
 
 tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_ssn=c(135,288), exportfromfunc = FALSE){
   warning("This function does not handle special characters, detection limits or fractions and does not calculate correction-factor dependent criteria. Please make these adjustments prior to using tmdlCalcs.")
@@ -82,10 +89,15 @@ tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_
   # Rec season and Irrigation season
   param.agg.dv$Rec_Season = ifelse(lubridate::yday(param.agg.dv$Date)>=rec_ssn[1]&lubridate::yday(param.agg.dv$Date)<=rec_ssn[2],"rec","not rec")
   param.agg.dv$Irg_Season = ifelse(lubridate::yday(param.agg.dv$Date)>=irg_ssn[1]&lubridate::yday(param.agg.dv$Date)<=irg_ssn[2],"irrigation","not irrigation")
-
+  
   if("Flow"%in%unique(tbl$CharacteristicName)){
     flow.agg = subset(param.dat, param.dat$CharacteristicName%in%c("Flow"))
-    flow.agg = aggregate(ResultMeasureValue~MonitoringLocationIdentifier+Date+ResultMeasure.MeasureUnitCode+BeneficialUse+NumericCriterion+CharacteristicName+ResultMeasure.MeasureUnitCode, data=flow.agg, FUN="mean")
+    flow.agg = tryCatch({
+      aggregate(ResultMeasureValue ~ MonitoringLocationIdentifier + Date + ResultMeasure.MeasureUnitCode + BeneficialUse + NumericCriterion + CharacteristicName, data = flow.agg, FUN = mean)
+    }, error = function(e) {
+      message("Aggregation failed, flow may already be aggregated to daily values.. continuing with existing data. Error: ", e$message)
+      return(flow.agg) # Return the unaggregated data frame if aggregation fails
+    })
     names(flow.agg)[names(flow.agg)=="ResultMeasureValue"] = "DailyFlowValue"
     names(flow.agg)[names(flow.agg)=="ResultMeasure.MeasureUnitCode"] = "FlowUnit"
     flow.agg = flow.agg%>%dplyr::group_by(MonitoringLocationIdentifier)%>%dplyr::mutate(Flow_Percentile = flow_perc(DailyFlowValue))%>%dplyr::select(-CharacteristicName)
@@ -93,9 +105,11 @@ tmdlCalcs <- function(idata, aggFun="mean", cf, mos= 0, rec_ssn=c(121,304), irg_
     param.agg.dv$Observed_Loading = param.agg.dv$DailyResultMeasureValue*cf*param.agg.dv$DailyFlowValue
     param.agg.dv$TMDL = as.numeric(param.agg.dv$NumericCriterion)*cf*param.agg.dv$DailyFlowValue*(1-mos)
   }
+
   ############################ SAVE WORKBOOK FILE WITH NEW SHEETS #########################
   if(exportfromfunc){
     write.csv(param.agg.dv,paste0("tmdlCalc_output_",Sys.Date(),".csv"), row.names = FALSE)
   }
   return(param.agg.dv)
 }
+
